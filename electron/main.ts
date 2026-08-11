@@ -1,9 +1,13 @@
 import { app, BrowserWindow, shell } from 'electron';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { registerDeviceHandlers } from './ipc/deviceHandlers';
 import { registerCommandHandlers } from './ipc/commandHandlers';
 import { registerScreenshotHandlers } from './ipc/screenshotHandlers';
 import { registerFileHandlers } from './ipc/fileHandlers';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -19,7 +23,7 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
+      preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // sandbox=true breaks some preload features; keep false with contextIsolation

@@ -51,21 +51,27 @@ function findAdbInSdk(): string | null {
 
   if (platform === 'darwin') {
     candidatePaths.push(
+      '/opt/homebrew/bin/adb',
+      '/usr/local/bin/adb',
       path.join(home, 'Library', 'Android', 'sdk', 'platform-tools', 'adb'),
       path.join(home, 'Library', 'Android', 'Sdk', 'platform-tools', 'adb'),
+      path.join(home, '.android-sdk', 'platform-tools', 'adb'),
     );
   } else if (platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || '';
+    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
     candidatePaths.push(
       path.join(localAppData, 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
+      path.join(programFiles, 'Android', 'platform-tools', 'adb.exe'),
+      'C:\\platform-tools\\adb.exe',
     );
   } else {
     // Linux
     candidatePaths.push(
+      '/usr/bin/adb',
+      '/usr/local/bin/adb',
       path.join(home, 'Android', 'Sdk', 'platform-tools', 'adb'),
       path.join(home, 'android', 'sdk', 'platform-tools', 'adb'),
-      '/usr/local/bin/adb',
-      '/usr/bin/adb',
     );
   }
 

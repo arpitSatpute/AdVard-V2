@@ -1,11 +1,11 @@
 {
-  "name": "android-usb-controller",
-  "productName": "Android USB Controller",
+  "name": "advard",
+  "productName": "AdVard",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "2.1.2",
   "description": "Desktop application to control Android phones via USB/ADB",
-  "main": "dist/electron/main.cjs",
+  "main": "dist/electron/main.mjs",
   "scripts": {
     "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"vite\" \"wait-on http://localhost:5173 && npm run build:electron && electron .\"",
     "build": "vite build && npm run build:electron",
@@ -47,8 +47,8 @@
     "wait-on": "^9.1.0"
   },
   "build": {
-    "appId": "com.advard.android-usb-controller",
-    "productName": "Android USB Controller",
+    "appId": "com.advard.app",
+    "productName": "AdVard",
     "directories": {
       "output": "release"
     },
@@ -59,7 +59,10 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": "dmg"
+      "target": "dmg",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "win": {
       "target": "nsis"

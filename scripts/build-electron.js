@@ -9,10 +9,10 @@ function processDir(dir) {
       processDir(fullPath);
     } else if (file.endsWith('.js')) {
       let content = fs.readFileSync(fullPath, 'utf8');
-      content = content.replace(/require\(["'](\.[^"']+)["']\)/g, (match, p1) => {
-        return `require('${p1}.cjs')`;
+      content = content.replace(/import\s+([\s\S]*?)\s+from\s+['"](\.[^'"]+)['"]/g, (match, p1, p2) => {
+        return `import ${p1} from '${p2}.mjs'`;
       });
-      const newPath = fullPath.slice(0, -3) + '.cjs';
+      const newPath = fullPath.slice(0, -3) + '.mjs';
       fs.writeFileSync(newPath, content);
       fs.unlinkSync(fullPath);
     }
