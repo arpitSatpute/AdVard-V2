@@ -7,13 +7,71 @@ import type {
   WirelessPairPayload,
   WirelessConnectPayload,
   WirelessDisconnectPayload,
+  QrSessionData,
 } from '../types/device';
 
-function getApi() {
-  if (!window.android) {
-    throw new Error('Android API not available — are you running inside Electron?');
+async function invokeHttp(channel: string, ...args: any[]): Promise<any> {
+  try {
+    const res = await fetch('/api/ipc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, args }),
+    });
+    return await res.json();
+  } catch (err: any) {
+    return { success: false, error: err.message || 'API connection failed' };
   }
-  return window.android;
+}
+
+const httpApi = {
+  getDevices: () => invokeHttp('adb:get-devices'),
+  getDeviceInfo: (serial: string) => invokeHttp('adb:get-device-info', serial),
+  restartAdb: () => invokeHttp('adb:restart-adb'),
+  generateQrCode: () => invokeHttp('adb:generate-qr'),
+  pairWirelessDevice: (payload: WirelessPairPayload) => invokeHttp('adb:pair-wireless', payload),
+  connectWirelessDevice: (payload: WirelessConnectPayload) => invokeHttp('adb:connect-wireless', payload),
+  disconnectWirelessDevice: (payload: WirelessDisconnectPayload) => invokeHttp('adb:disconnect-wireless', payload),
+  enableUsbTcpip: (serial: string, port?: number) => invokeHttp('adb:enable-tcpip', serial, port),
+  getDeviceIp: (serial: string) => invokeHttp('adb:get-device-ip', serial),
+  home: (serial: string) => invokeHttp('adb:home', serial),
+  back: (serial: string) => invokeHttp('adb:back', serial),
+  recent: (serial: string) => invokeHttp('adb:recent', serial),
+  power: (serial: string) => invokeHttp('adb:power', serial),
+  unlock: (serial: string, pin?: string) => invokeHttp('adb:unlock', serial, pin),
+  keyEvent: (serial: string, keycode: number) => invokeHttp('adb:keyevent', serial, keycode),
+  makeCall: (serial: string, number: string) => invokeHttp('adb:call-make', serial, number),
+  answerCall: (serial: string) => invokeHttp('adb:call-answer', serial),
+  endCall: (serial: string) => invokeHttp('adb:call-end', serial),
+  tap: (serial: string, x: number, y: number) => invokeHttp('adb:tap', serial, x, y),
+  swipe: (serial: string, x1: number, y1: number, x2: number, y2: number, duration?: number) => invokeHttp('adb:swipe', serial, x1, y1, x2, y2, duration),
+  inputText: (serial: string, text: string) => invokeHttp('adb:input-text', serial, text),
+  volumeUp: (serial: string) => invokeHttp('adb:volume-up', serial),
+  volumeDown: (serial: string) => invokeHttp('adb:volume-down', serial),
+  volumeMute: (serial: string) => invokeHttp('adb:volume-mute', serial),
+  mediaPlayPause: (serial: string) => invokeHttp('adb:media-play-pause', serial),
+  mediaNext: (serial: string) => invokeHttp('adb:media-next', serial),
+  mediaPrev: (serial: string) => invokeHttp('adb:media-prev', serial),
+  getBrightness: (serial: string) => invokeHttp('adb:get-brightness', serial),
+  setBrightness: (serial: string, level: number) => invokeHttp('adb:set-brightness', serial, level),
+  reboot: (serial: string) => invokeHttp('adb:reboot', serial),
+  screenshot: (serial: string) => invokeHttp('adb:screenshot', serial),
+  saveScreenshot: (base64Data: string) => invokeHttp('adb:save-screenshot', base64Data),
+  shell: (serial: string, command: string) => invokeHttp('adb:shell', serial, command),
+  listPackages: (serial: string, filterType?: 'all' | '3rdparty' | 'system') => invokeHttp('adb:list-packages', serial, filterType),
+  launchApp: (serial: string, packageName: string) => invokeHttp('adb:launch-app', serial, packageName),
+  forceStopApp: (serial: string, packageName: string) => invokeHttp('adb:force-stop', serial, packageName),
+  clearAppData: (serial: string, packageName: string) => invokeHttp('adb:clear-data', serial, packageName),
+  installApk: (serial: string) => invokeHttp('adb:install-apk', serial),
+  uninstallApp: (serial: string, packageName: string) => invokeHttp('adb:uninstall-app', serial, packageName),
+  pushFile: (serial: string, remotePath: string) => invokeHttp('adb:push-file', serial, remotePath),
+  pullFile: (serial: string, remotePath: string) => invokeHttp('adb:pull-file', serial, remotePath),
+};
+
+function getApi() {
+  if (typeof window !== 'undefined' && window.android) {
+    return window.android;
+  }
+  return httpApi;
 }
 
 // ─── Device Management ────────────────────────────────────────────────────────

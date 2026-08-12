@@ -60,10 +60,16 @@ function findAdbInSdk(): string | null {
   } else if (platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || '';
     const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
     candidatePaths.push(
+      'C:\\platform-tools-latest-windows\\platform-tools\\adb.exe',
+      path.join(programFiles, 'Software Fix', 'adb.exe'),
+      path.join(programFilesX86, 'Software Fix', 'adb.exe'),
       path.join(localAppData, 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
       path.join(programFiles, 'Android', 'platform-tools', 'adb.exe'),
       'C:\\platform-tools\\adb.exe',
+      'C:\\adb\\adb.exe',
+      'C:\\tools\\platform-tools\\adb.exe',
     );
   } else {
     // Linux

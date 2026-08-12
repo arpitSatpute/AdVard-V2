@@ -7,7 +7,8 @@
   "description": "Desktop application to control Android phones via USB/ADB",
   "main": "dist/electron/main.mjs",
   "scripts": {
-    "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"vite\" \"wait-on http://localhost:5173 && npm run build:electron && electron .\"",
+    "dev": "concurrently -k -n \"VITE,ELECTRON\" -c \"cyan,yellow\" \"vite\" \"wait-on http://localhost:5173 && npm run build:electron && node scripts/start-electron.js .\"",
+    "dev:web": "vite",
     "build": "vite build && npm run build:electron",
     "build:electron": "tsc -p tsconfig.node.json && tsc -p tsconfig.preload.json && node scripts/build-electron.js",
     "build:renderer": "vite build",
@@ -15,7 +16,7 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
-    "electron": "electron .",
+    "electron": "node scripts/start-electron.js .",
     "start": "npm run dev",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -68,6 +69,17 @@
     },
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AdVard",
+      "guid": "com.advard.app",
+      "perMachine": false,
+      "uninstallDisplayName": "AdVard"
     }
   }
 }
