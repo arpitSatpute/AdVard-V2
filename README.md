@@ -146,7 +146,6 @@ If you want to build AdVard locally or contribute to development:
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/arpitSatpute/AdVard-V2.git
-cd AdVard-V2/frontend
 ```
 
 ### 2. Install Dependencies
