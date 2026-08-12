@@ -1,10 +1,14 @@
 import { runAdb } from './adbManager';
+import { detectConnectionType, ConnectionType } from './connectionManager';
 
 export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'unknown';
 
 export interface DeviceEntry {
   serial: string;
   status: DeviceStatus;
+  connectionType: ConnectionType;
+  ip?: string;
+  port?: number;
 }
 
 export interface DeviceInfo {
@@ -19,7 +23,7 @@ export interface DeviceInfo {
 }
 
 /**
- * Runs `adb devices` and returns parsed list of connected devices.
+ * Runs `adb devices` and returns parsed list of connected USB & Wi-Fi devices.
  */
 export async function listDevices(): Promise<DeviceEntry[]> {
   const result = await runAdb(['devices']);
@@ -40,7 +44,24 @@ export async function listDevices(): Promise<DeviceEntry[]> {
     if (parts.length >= 2) {
       const [serial, statusRaw] = parts;
       const status = normalizeStatus(statusRaw);
-      devices.push({ serial, status });
+      const connType = detectConnectionType(serial);
+
+      let ip: string | undefined;
+      let port: number | undefined;
+
+      if (connType === 'wifi') {
+        const [h, p] = serial.split(':');
+        ip = h;
+        port = parseInt(p, 10);
+      }
+
+      devices.push({
+        serial,
+        status,
+        connectionType: connType,
+        ip,
+        port,
+      });
     }
   }
 

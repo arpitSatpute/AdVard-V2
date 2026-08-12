@@ -1,10 +1,14 @@
 // ─── Device Types ─────────────────────────────────────────────────────────────
 
 export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'unknown';
+export type ConnectionType = 'usb' | 'wifi';
 
 export interface DeviceEntry {
   serial: string;
   status: DeviceStatus;
+  connectionType: ConnectionType;
+  ip?: string;
+  port?: number;
 }
 
 export interface DeviceInfo {
@@ -16,6 +20,24 @@ export interface DeviceInfo {
   batteryLevel: number | null;
   resolution: string;
   density: string;
+}
+
+// ─── Wireless Payload Types ───────────────────────────────────────────────────
+
+export interface WirelessPairPayload {
+  host: string;
+  pairingPort: number;
+  pairingCode: string;
+}
+
+export interface WirelessConnectPayload {
+  host: string;
+  port: number;
+}
+
+export interface WirelessDisconnectPayload {
+  host: string;
+  port: number;
 }
 
 // ─── ADB Response Types ───────────────────────────────────────────────────────
@@ -49,6 +71,13 @@ export interface ShellHistoryEntry {
   timestamp: Date;
 }
 
+export interface QrSessionData {
+  qrDataUrl: string;
+  qrPayload: string;
+  serviceName: string;
+  password: string;
+}
+
 // ─── Window API Type ──────────────────────────────────────────────────────────
 
 export interface AndroidApi {
@@ -56,6 +85,14 @@ export interface AndroidApi {
   getDevices: () => Promise<AdbResponse<DeviceEntry[]>>;
   getDeviceInfo: (serial: string) => Promise<AdbResponse<DeviceInfo>>;
   restartAdb: () => Promise<AdbResponse>;
+
+  // Wireless ADB
+  generateQrCode: () => Promise<AdbResponse<QrSessionData>>;
+  pairWirelessDevice: (payload: WirelessPairPayload) => Promise<AdbResponse<string>>;
+  connectWirelessDevice: (payload: WirelessConnectPayload) => Promise<AdbResponse<string>>;
+  disconnectWirelessDevice: (payload: WirelessDisconnectPayload) => Promise<AdbResponse<string>>;
+  enableUsbTcpip: (serial: string, port?: number) => Promise<AdbResponse<{ output: string; ip?: string }>>;
+  getDeviceIp: (serial: string) => Promise<AdbResponse<string | null>>;
 
   // Navigation, Power & Unlock
   home: (serial: string) => Promise<AdbResponse>;

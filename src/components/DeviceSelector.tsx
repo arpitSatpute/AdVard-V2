@@ -1,5 +1,18 @@
-import { RefreshCw, Smartphone, AlertCircle, Wifi, WifiOff, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Smartphone,
+  RefreshCw,
+  AlertTriangle,
+  RotateCcw,
+  Usb,
+  Wifi,
+  Plus,
+  Unlink,
+} from 'lucide-react';
 import type { DeviceEntry } from '../types/device';
+import { WirelessDeviceModal } from './WirelessDeviceModal';
+import { disconnectWirelessDevice } from '../services/electronApi';
+import { useToast } from './Toast';
 
 interface DeviceSelectorProps {
   devices: DeviceEntry[];
@@ -9,31 +22,8 @@ interface DeviceSelectorProps {
   onRestartAdb: () => void;
   isLoading: boolean;
   error: string | null;
-  isAdbMissing: boolean;
+  isAdbMissing?: boolean;
 }
-
-const STATUS_CONFIG = {
-  device: {
-    dot: 'bg-success',
-    label: 'Connected',
-    textColor: 'text-success',
-  },
-  unauthorized: {
-    dot: 'bg-warning animate-pulse',
-    label: 'Unauthorized',
-    textColor: 'text-warning',
-  },
-  offline: {
-    dot: 'bg-danger',
-    label: 'Offline',
-    textColor: 'text-danger',
-  },
-  unknown: {
-    dot: 'bg-gray-500',
-    label: 'Unknown',
-    textColor: 'text-gray-400',
-  },
-} as const;
 
 export function DeviceSelector({
   devices,
@@ -45,155 +35,191 @@ export function DeviceSelector({
   error,
   isAdbMissing,
 }: DeviceSelectorProps) {
+  const [showWirelessModal, setShowWirelessModal] = useState(false);
+  const [disconnectingSerial, setDisconnectingSerial] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  const handleDisconnectWifi = async (e: React.MouseEvent, device: DeviceEntry) => {
+    e.stopPropagation();
+    if (!device.ip || !device.port) return;
+
+    setDisconnectingSerial(device.serial);
+    try {
+      const res = await disconnectWirelessDevice({
+        host: device.ip,
+        port: device.port,
+      });
+
+      if (res.success) {
+        showToast(`Disconnected ${device.serial}`, 'info');
+        onRefresh();
+      } else {
+        showToast(res.error ?? 'Disconnect failed', 'error');
+      }
+    } catch {
+      showToast('Disconnect failed', 'error');
+    } finally {
+      setDisconnectingSerial(null);
+    }
+  };
+
   return (
-    <aside className="w-64 shrink-0 flex flex-col bg-surface-800 border-r border-surface-600 h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-surface-600">
-        <div className="flex items-center gap-2">
-          <Smartphone size={16} className="text-accent-light" />
-          <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">
-            Devices
-          </span>
+    <>
+      <aside className="w-64 border-r border-surface-600 bg-surface-800 flex flex-col h-full shrink-0">
+        {/* Header */}
+        <div className="p-4 border-b border-surface-600 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Smartphone size={16} className="text-accent-light" />
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+              Devices ({devices.length})
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              id="add-wireless-device-btn"
+              onClick={() => setShowWirelessModal(true)}
+              title="Add Wireless Device"
+              className="p-1.5 rounded-lg text-accent-light bg-accent/15 hover:bg-accent/30 transition-colors"
+            >
+              <Plus size={13} />
+            </button>
+
+            <button
+              id="refresh-devices-btn"
+              onClick={onRefresh}
+              disabled={isLoading}
+              title="Refresh devices"
+              className="p-1 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-surface-600 disabled:opacity-30 transition-colors"
+            >
+              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
-        <button
-          id="refresh-devices-btn"
-          onClick={onRefresh}
-          disabled={isLoading}
-          title="Refresh devices"
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-surface-500
-            disabled:opacity-40 transition-all"
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-        </button>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-        {isAdbMissing ? (
-          <AdbMissingState onRestartAdb={onRestartAdb} />
-        ) : error ? (
-          <ErrorState error={error} onRestartAdb={onRestartAdb} />
-        ) : isLoading && devices.length === 0 ? (
-          <LoadingState />
-        ) : devices.length === 0 ? (
-          <EmptyState />
-        ) : (
-          devices.map((device) => (
-            <DeviceCard
-              key={device.serial}
-              device={device}
-              isSelected={selectedSerial === device.serial}
-              onSelect={() => onSelect(device.serial)}
-            />
-          ))
+        {/* Missing ADB Banner */}
+        {isAdbMissing && (
+          <div className="p-3 bg-danger/10 border-b border-danger/20 text-xs text-danger flex items-start gap-2">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">ADB binary missing</p>
+              <p className="mt-0.5 text-[11px] text-danger/80">
+                Install Platform Tools or add `adb` to your PATH.
+              </p>
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-surface-600">
-        <button
-          id="restart-adb-btn"
-          onClick={onRestartAdb}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
-            text-xs text-gray-400 hover:text-gray-200 hover:bg-surface-500 transition-all"
-        >
-          <RefreshCw size={12} />
-          Restart ADB Server
-        </button>
-      </div>
-    </aside>
-  );
-}
+        {/* Device list */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {devices.length === 0 ? (
+            <div className="py-8 px-4 text-center">
+              <p className="text-xs text-gray-500 font-medium">No devices detected</p>
+              <p className="text-[11px] text-gray-600 mt-1">
+                Connect via USB or click + to pair via Wi-Fi.
+              </p>
+            </div>
+          ) : (
+            devices.map((device) => {
+              const isSelected = device.serial === selectedSerial;
+              const isWifi = device.connectionType === 'wifi';
 
-function DeviceCard({
-  device,
-  isSelected,
-  onSelect,
-}: {
-  device: DeviceEntry;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const config = STATUS_CONFIG[device.status];
+              return (
+                <div
+                  key={device.serial}
+                  id={`device-item-${device.serial}`}
+                  onClick={() => onSelect(device.serial)}
+                  className={`group relative w-full flex items-center justify-between p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-accent/15 border-accent/40 text-white'
+                      : 'bg-surface-700/50 border-surface-600 hover:bg-surface-700 hover:border-surface-500 text-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden flex-1 mr-2">
+                    {/* Connection Type Icon */}
+                    <div
+                      className={`p-1.5 rounded-lg shrink-0 ${
+                        isWifi ? 'bg-indigo-500/15 text-indigo-400' : 'bg-surface-500 text-gray-400'
+                      }`}
+                    >
+                      {isWifi ? <Wifi size={13} /> : <Usb size={13} />}
+                    </div>
 
-  return (
-    <button
-      id={`device-card-${device.serial}`}
-      onClick={onSelect}
-      className={`w-full text-left px-3 py-3 rounded-xl border transition-all group
-        ${isSelected
-          ? 'bg-accent/15 border-accent/40 text-gray-100'
-          : 'bg-surface-700 border-surface-500 hover:border-accent/30 hover:bg-surface-600 text-gray-300'
-        }`}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${config.dot}`} />
-        <span className="text-sm font-medium truncate">{device.serial}</span>
-      </div>
-      <div className={`text-xs ml-4 ${config.textColor}`}>{config.label}</div>
-    </button>
-  );
-}
+                    <div className="overflow-hidden flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-medium truncate">
+                          {device.serial}
+                        </span>
+                      </div>
 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-center px-2">
-      <div className="p-3 rounded-2xl bg-surface-600 mb-3">
-        <WifiOff size={20} className="text-gray-500" />
-      </div>
-      <p className="text-xs font-medium text-gray-400 mb-1">No devices connected</p>
-      <p className="text-xs text-gray-500">
-        Connect an Android phone via USB with USB debugging enabled
-      </p>
-    </div>
-  );
-}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                          {device.connectionType}
+                        </span>
+                        <span className="text-[10px] text-gray-500">•</span>
+                        <span
+                          className={`text-[10px] capitalize font-medium ${
+                            device.status === 'device'
+                              ? 'text-success'
+                              : device.status === 'unauthorized'
+                              ? 'text-warning'
+                              : 'text-danger'
+                          }`}
+                        >
+                          {device.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-function LoadingState() {
-  return (
-    <div className="space-y-2">
-      {[1, 2].map((i) => (
-        <div key={i} className="h-16 rounded-xl bg-surface-600 animate-pulse" />
-      ))}
-    </div>
-  );
-}
+                  {/* Wi-Fi Disconnect Action Button */}
+                  {isWifi && (
+                    <button
+                      onClick={(e) => handleDisconnectWifi(e, device)}
+                      disabled={disconnectingSerial === device.serial}
+                      title="Disconnect Wireless ADB"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-danger hover:bg-danger/10 transition-all"
+                    >
+                      {disconnectingSerial === device.serial ? (
+                        <RefreshCw size={12} className="animate-spin" />
+                      ) : (
+                        <Unlink size={12} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
 
-function ErrorState({ error, onRestartAdb }: { error: string; onRestartAdb: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-8 text-center px-2 gap-3">
-      <div className="p-3 rounded-2xl bg-danger/10">
-        <AlertCircle size={20} className="text-danger" />
-      </div>
-      <p className="text-xs text-gray-400">{error}</p>
-      <button
-        onClick={onRestartAdb}
-        className="text-xs text-accent-light hover:underline"
-      >
-        Restart ADB Server
-      </button>
-    </div>
-  );
-}
+        {/* Footer actions */}
+        <div className="p-3 border-t border-surface-600 bg-surface-800/80 space-y-2">
+          {error && (
+            <p className="text-[11px] text-danger truncate px-1" title={error}>
+              {error}
+            </p>
+          )}
 
-function AdbMissingState({ onRestartAdb }: { onRestartAdb: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-8 text-center px-2 gap-3">
-      <div className="p-3 rounded-2xl bg-warning/10">
-        <ShieldAlert size={20} className="text-warning" />
-      </div>
-      <p className="text-xs font-medium text-gray-300">ADB Not Found</p>
-      <p className="text-xs text-gray-500">
-        Install Android Platform Tools or add ADB to your PATH
-      </p>
-      <a
-        href="https://developer.android.com/tools/releases/platform-tools"
-        target="_blank"
-        rel="noreferrer"
-        className="text-xs text-accent-light hover:underline"
-      >
-        Download Platform Tools ↗
-      </a>
-    </div>
+          <button
+            id="restart-adb-btn"
+            onClick={onRestartAdb}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3
+              rounded-lg bg-surface-700 hover:bg-surface-600 border border-surface-500
+              text-xs text-gray-400 hover:text-gray-200 transition-all"
+          >
+            <RotateCcw size={11} />
+            Restart ADB Server
+          </button>
+        </div>
+      </aside>
+
+      <WirelessDeviceModal
+        isOpen={showWirelessModal}
+        onClose={() => setShowWirelessModal(false)}
+        onSuccess={onRefresh}
+        usbDevices={devices.filter((d) => d.connectionType === 'usb' && d.status === 'device')}
+      />
+    </>
   );
 }

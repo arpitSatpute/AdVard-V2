@@ -4,6 +4,9 @@ import type {
   AdbResponse,
   ShellResult,
   PackageEntry,
+  WirelessPairPayload,
+  WirelessConnectPayload,
+  WirelessDisconnectPayload,
 } from '../types/device';
 
 function getApi() {
@@ -25,6 +28,32 @@ export async function getDeviceInfo(serial: string): Promise<AdbResponse<DeviceI
 
 export async function restartAdb(): Promise<AdbResponse> {
   return getApi().restartAdb();
+}
+
+// ─── Wireless ADB ─────────────────────────────────────────────────────────────
+
+export async function generateQrCode(): Promise<AdbResponse<QrSessionData>> {
+  return getApi().generateQrCode();
+}
+
+export async function pairWirelessDevice(payload: WirelessPairPayload): Promise<AdbResponse<string>> {
+  return getApi().pairWirelessDevice(payload);
+}
+
+export async function connectWirelessDevice(payload: WirelessConnectPayload): Promise<AdbResponse<string>> {
+  return getApi().connectWirelessDevice(payload);
+}
+
+export async function disconnectWirelessDevice(payload: WirelessDisconnectPayload): Promise<AdbResponse<string>> {
+  return getApi().disconnectWirelessDevice(payload);
+}
+
+export async function enableUsbTcpip(serial: string, port?: number): Promise<AdbResponse<{ output: string; ip?: string }>> {
+  return getApi().enableUsbTcpip(serial, port);
+}
+
+export async function getDeviceIp(serial: string): Promise<AdbResponse<string | null>> {
+  return getApi().getDeviceIp(serial);
 }
 
 // ─── Navigation, Power & Unlock ──────────────────────────────────────────────

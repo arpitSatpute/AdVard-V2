@@ -1,14 +1,18 @@
-# AdVard — Android USB Controller
+# AdVard — Android USB & Wireless ADB Controller
 
-AdVard is a cross-platform desktop developer tool and device manager built to remotely control Android smartphones connected via USB ADB (Android Debug Bridge).
+AdVard is a cross-platform desktop developer tool and device manager built to remotely control Android smartphones connected via USB or Wi-Fi using ADB (Android Debug Bridge).
 
-It features a high-performance **React + Vite + TypeScript** interface running inside **Electron**, backed by a secure **Node.js process** that communicates directly with `adb` binaries on macOS, Windows, and Linux.
+It features a high-performance **React 19 + Vite + TypeScript** interface running inside **Electron**, backed by a secure **Node.js process** that communicates directly with `adb` binaries on macOS, Windows, and Linux.
 
 ---
 
 ## Key Features
 
-- **Automated USB Device Detection**: Real-time polling (every 2s) to detect attached USB Android devices and display connection statuses (`Connected`, `Unauthorized`, `Offline`).
+- **Dual Connection Manager (USB & Wireless ADB)**:
+  - **USB Connections**: Auto-detected via USB cable.
+  - **Wireless ADB (Android 11+)**: Guided pairing UI (`adb pair IP:Port`) with 6-digit code entry, direct connect (`adb connect IP:Port`), and 1-click disconnect (`adb disconnect IP:Port`).
+  - **Transport-Agnostic Engine**: All commands (Home, Screen Mirror, Shell, Apps, Calls) target devices seamlessly regardless of whether `connectionType` is `usb` or `wifi`.
+- **Automated Device Discovery**: Unified polling (every 2s) for attached devices with status badges (`Connected`, `Unauthorized`, `Offline`).
 - **Device Specifications & Status**: Inspect Model, Manufacturer, Android Version, SDK Version, Battery Level, Screen Resolution, and DPI Density.
 - **Hardware & Navigation Controls**: Remotely trigger `Home`, `Back`, `Recent Apps`, `Power Button`, and `Reboot` actions.
 - **Device Unlock**: Remotely wake up the display, send swipe-up unlock gestures, and input security PINs.
@@ -32,7 +36,7 @@ It features a high-performance **React + Vite + TypeScript** interface running i
 
 ---
 
-## Tech Stack & Architecture
+## Architecture
 
 ```text
 ┌───────────────────────────────────────────────────────────┐
@@ -45,13 +49,18 @@ It features a high-performance **React + Vite + TypeScript** interface running i
 │                   Electron Main Process                   │
 │             (ContextIsolation enabled, sandboxed)         │
 └─────────────────────────────┬─────────────────────────────┘
-                              │ Node.js (child_process.spawn)
+                              │ Node.js Connection Manager
                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │                      ADB Layer                            │
 │  (Locates platform-tools adb via PATH or SDK directories) │
 └─────────────────────────────┬─────────────────────────────┘
-                              │ USB Connection
+              ┌───────────────┴───────────────┐
+              │                               │
+     USB ADB Connection             Wi-Fi ADB Connection
+              │                               │
+              └───────────────┬───────────────┘
+                              │
                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │                    Target Android Phone                   │
@@ -60,17 +69,19 @@ It features a high-performance **React + Vite + TypeScript** interface running i
 
 ---
 
-## Prerequisites
+## Setup & Prerequisites
 
-1. **Node.js** (v18 or higher recommended)
-2. **Android Platform Tools (`adb`)** installed on host machine, or installed via Android Studio SDK.
-   - macOS: `~/Library/Android/sdk/platform-tools/adb`
-   - Windows: `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`
-   - Linux: `~/Android/Sdk/platform-tools/adb`
-3. **Android Device Settings**:
-   - Enable **Developer Options** on Android (Settings → About Phone → Tap *Build Number* 7 times).
-   - Enable **USB Debugging** (Settings → Developer Options → USB Debugging).
-   - Connect phone via USB cable and tap **Allow USB Debugging** on prompt.
+### Wireless ADB (Android 11+) Setup
+1. Ensure your computer and Android phone are connected to the **same Wi-Fi network**.
+2. On your phone: Open **Settings** → **Developer Options** → Enable **Wireless Debugging**.
+3. Tap **"Pair device with pairing code"**.
+4. In **AdVard**, click **`[+ Add Device]`** in the sidebar → Enter the displayed **IP Address**, **Pairing Port**, and **6-Digit Pairing Code** → Click **Pair Device**.
+5. Switch to **Connect Device** → Enter the connection IP & Port → Click **Connect Device**. Your phone will appear under the Wi-Fi section!
+
+### USB ADB Setup
+1. Enable **Developer Options** on Android (Settings → About Phone → Tap *Build Number* 7 times).
+2. Enable **USB Debugging** (Settings → Developer Options → USB Debugging).
+3. Connect phone via USB cable and tap **Allow USB Debugging** on prompt.
 
 ---
 
@@ -78,63 +89,27 @@ It features a high-performance **React + Vite + TypeScript** interface running i
 
 ### Development Mode
 
-To start Vite dev server and launch the Electron application concurrently:
-
 ```bash
 npm run dev
 ```
 
 ### Production Build
 
-To compile TypeScript and build the production bundle for both renderer and Electron:
-
 ```bash
 npm run build
 ```
 
----
+### Build Installers
 
-## Project Structure
+```bash
+# macOS DMG Installer
+npm run dist:mac
 
-```text
-frontend/
-├── electron/
-│   ├── adb/
-│   │   ├── adbLocator.ts       # Locates ADB in PATH / Android SDK
-│   │   ├── adbManager.ts       # Spawn-based safe ADB runner
-│   │   ├── commandExecutor.ts  # ADB commands (power, volume, calls, touch)
-│   │   └── deviceManager.ts   # Device listing and property parser
-│   ├── ipc/
-│   │   ├── commandHandlers.ts  # Navigation, power, calls, touch IPC
-│   │   ├── deviceHandlers.ts   # Device list & info IPC
-│   │   ├── fileHandlers.ts     # Apps & file push/pull IPC
-│   │   └── screenshotHandlers.ts # Screenshot capture & save IPC
-│   ├── main.ts                 # Electron BrowserWindow entry point
-│   └── preload.ts              # Secure contextBridge API definition
-├── src/
-│   ├── components/
-│   │   ├── AppManager.tsx           # App list, launch, stop, clear data
-│   │   ├── ConfirmDialog.tsx        # Modal confirmation
-│   │   ├── DeviceActions.tsx        # Power, unlock, screenshot, reboot
-│   │   ├── DeviceInfo.tsx           # Specs & battery grid
-│   │   ├── DeviceSelector.tsx       # Left sidebar connected devices list
-│   │   ├── MediaVolumeControls.tsx  # Volume, playback, brightness
-│   │   ├── NavigationControls.tsx   # Home, Back, Recent buttons
-│   │   ├── PhoneCallManager.tsx     # Dial, answer, end call controls
-│   │   ├── ScreenMirror.tsx         # Interactive live screen & mouse touch
-│   │   ├── ScreenshotViewer.tsx     # Zoomable screenshot viewer
-│   │   ├── ShellTerminal.tsx        # Interactive ADB shell console
-│   │   └── Toast.tsx                # Toast notifications
-│   ├── hooks/                       # Custom React hooks (useDevices, etc.)
-│   ├── pages/
-│   │   └── Dashboard.tsx            # Main layout dashboard
-│   ├── services/
-│   │   └── electronApi.ts           # Typed wrapper around window.android
-│   ├── types/
-│   │   └── device.ts                # Shared TypeScript definitions
-│   ├── App.tsx                      # Root component
-│   └── index.css                    # Design system styles
-└── README.md
+# Windows NSIS Installer (.exe)
+npm run dist:win
+
+# Linux AppImage (.AppImage)
+npm run dist:linux
 ```
 
 ---

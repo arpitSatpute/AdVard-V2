@@ -1,5 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface WirelessPairPayload {
+  host: string;
+  pairingPort: number;
+  pairingCode: string;
+}
+
+export interface WirelessConnectPayload {
+  host: string;
+  port: number;
+}
+
+export interface WirelessDisconnectPayload {
+  host: string;
+  port: number;
+}
+
 /**
  * Secure preload — exposes a typed, minimal API to the renderer.
  * Never exposes ipcRenderer, process, fs, child_process, or exec/spawn.
@@ -14,6 +30,25 @@ contextBridge.exposeInMainWorld('android', {
 
   restartAdb: () =>
     ipcRenderer.invoke('adb:restart-adb'),
+
+  // ─── Wireless ADB ────────────────────────────────────────────────────────
+  generateQrCode: () =>
+    ipcRenderer.invoke('adb:generate-qr'),
+
+  pairWirelessDevice: (payload: WirelessPairPayload) =>
+    ipcRenderer.invoke('adb:pair-wireless', payload),
+
+  connectWirelessDevice: (payload: WirelessConnectPayload) =>
+    ipcRenderer.invoke('adb:connect-wireless', payload),
+
+  disconnectWirelessDevice: (payload: WirelessDisconnectPayload) =>
+    ipcRenderer.invoke('adb:disconnect-wireless', payload),
+
+  enableUsbTcpip: (serial: string, port?: number) =>
+    ipcRenderer.invoke('adb:enable-tcpip', serial, port),
+
+  getDeviceIp: (serial: string) =>
+    ipcRenderer.invoke('adb:get-device-ip', serial),
 
   // ─── Navigation, Power & Unlock ─────────────────────────────────────────
   home: (serial: string) =>
