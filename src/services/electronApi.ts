@@ -8,6 +8,8 @@ import type {
   WirelessConnectPayload,
   WirelessDisconnectPayload,
   QrSessionData,
+  FileItem,
+  FilePreviewData,
 } from '../types/device';
 
 async function invokeHttp(channel: string, ...args: any[]): Promise<any> {
@@ -63,8 +65,12 @@ const httpApi = {
   clearAppData: (serial: string, packageName: string) => invokeHttp('adb:clear-data', serial, packageName),
   installApk: (serial: string) => invokeHttp('adb:install-apk', serial),
   uninstallApp: (serial: string, packageName: string) => invokeHttp('adb:uninstall-app', serial, packageName),
+  getFilePreview: (serial: string, remotePath: string) => invokeHttp('adb:get-file-preview', serial, remotePath),
+  listDirectory: (serial: string, remoteDir?: string) => invokeHttp('adb:list-directory', serial, remoteDir),
   pushFile: (serial: string, remotePath: string) => invokeHttp('adb:push-file', serial, remotePath),
+  pushFolder: (serial: string, remotePath: string) => invokeHttp('adb:push-folder', serial, remotePath),
   pullFile: (serial: string, remotePath: string) => invokeHttp('adb:pull-file', serial, remotePath),
+
 };
 
 function getApi() {
@@ -256,12 +262,102 @@ export async function uninstallApp(serial: string, packageName: string): Promise
   return getApi().uninstallApp(serial, packageName);
 }
 
-// ─── File Management ──────────────────────────────────────────────────────────
+// ─── File Management & Transfer ──────────────────────────────────────────────
+
+function execApiCall(fnName: string, ...args: any[]): Promise<any> {
+  if (typeof window !== 'undefined' && window.android && typeof (window.android as any)[fnName] === 'function') {
+    return (window.android as any)[fnName](...args);
+  }
+  if (typeof (httpApi as any)[fnName] === 'function') {
+    return (httpApi as any)[fnName](...args);
+  }
+  return Promise.resolve({ success: false, error: `Method ${fnName} is not supported in current environment` });
+}
+
+export function getPathForFile(file: File): string {
+
+  if (typeof window !== 'undefined' && window.android?.getPathForFile) {
+    try {
+      const p = window.android.getPathForFile(file);
+      if (p) return p;
+    } catch {
+      // fallback
+    }
+  }
+  return (file as any).path || '';
+}
+
+export async function getFilePreview(serial: string, remotePath: string): Promise<AdbResponse<FilePreviewData>> {
+  return execApiCall('getFilePreview', serial, remotePath);
+}
+
+export async function listDirectory(serial: string, remoteDir?: string): Promise<AdbResponse<FileItem[]>> {
+
+  return execApiCall('listDirectory', serial, remoteDir);
+}
+
+export async function createDirectory(serial: string, remoteDir: string): Promise<AdbResponse> {
+  return execApiCall('createDirectory', serial, remoteDir);
+}
+
+export async function deleteRemoteFile(serial: string, remotePath: string): Promise<AdbResponse> {
+  return execApiCall('deleteRemoteFile', serial, remotePath);
+}
+
+export async function renameRemoteFile(serial: string, oldPath: string, newPath: string): Promise<AdbResponse> {
+  return execApiCall('renameRemoteFile', serial, oldPath, newPath);
+}
 
 export async function pushFile(serial: string, remotePath: string): Promise<AdbResponse> {
-  return getApi().pushFile(serial, remotePath);
+  return execApiCall('pushFile', serial, remotePath);
+}
+
+export async function pushFolder(serial: string, remotePath: string): Promise<AdbResponse> {
+  return execApiCall('pushFolder', serial, remotePath);
+}
+
+
+export async function pushPaths(serial: string, localPaths: string[], remoteDir: string): Promise<AdbResponse<string[]>> {
+  return execApiCall('pushPaths', serial, localPaths, remoteDir);
 }
 
 export async function pullFile(serial: string, remotePath: string): Promise<AdbResponse<string>> {
-  return getApi().pullFile(serial, remotePath);
+  return execApiCall('pullFile', serial, remotePath);
 }
+
+export async function pullPathTo(serial: string, remotePath: string, localDestinationDir?: string): Promise<AdbResponse<string>> {
+  return execApiCall('pullPathTo', serial, remotePath, localDestinationDir);
+}
+
+export async function pauseTransfer(): Promise<AdbResponse<boolean>> {
+  return execApiCall('pauseTransfer');
+}
+
+export async function resumeTransfer(): Promise<AdbResponse<boolean>> {
+  return execApiCall('resumeTransfer');
+}
+
+export async function cancelTransfer(): Promise<AdbResponse<boolean>> {
+  return execApiCall('cancelTransfer');
+}
+
+export async function openCastWindow(serial: string): Promise<AdbResponse> {
+  return execApiCall('openCastWindow', serial);
+}
+
+export async function getPhoneClipboard(serial: string): Promise<AdbResponse<string>> {
+  return execApiCall('getPhoneClipboard', serial);
+}
+
+export async function sendPhoneClipboard(serial: string, text: string): Promise<AdbResponse> {
+  return execApiCall('sendPhoneClipboard', serial, text);
+}
+
+export async function getNotifications(serial: string): Promise<AdbResponse<any[]>> {
+  return execApiCall('getNotifications', serial);
+}
+
+
+
+
+

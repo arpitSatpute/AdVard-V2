@@ -60,6 +60,33 @@ export interface PackageEntry {
   isSystem: boolean;
 }
 
+export interface FileItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  permissions: string;
+  modifiedDate: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  text?: string;
+  appName?: string;
+  timestamp: string;
+}
+
+
+export interface FilePreviewData {
+  type: 'image' | 'text' | 'binary';
+  content?: string;
+  mimeType?: string;
+}
+
+
+
 // ─── Shell History ────────────────────────────────────────────────────────────
 
 export interface ShellHistoryEntry {
@@ -142,9 +169,21 @@ export interface AndroidApi {
   installApk: (serial: string) => Promise<AdbResponse<string>>;
   uninstallApp: (serial: string, packageName: string) => Promise<AdbResponse>;
 
-  // Files
+  // Files & Drag-and-Drop Sharing
+  getPathForFile: (file: File) => string;
+  getFilePreview: (serial: string, remotePath: string) => Promise<AdbResponse<FilePreviewData>>;
+
+  listDirectory: (serial: string, remoteDir?: string) => Promise<AdbResponse<FileItem[]>>;
   pushFile: (serial: string, remotePath: string) => Promise<AdbResponse>;
+  pushFolder: (serial: string, remotePath: string) => Promise<AdbResponse>;
   pullFile: (serial: string, remotePath: string) => Promise<AdbResponse<string>>;
+  pauseTransfer: () => Promise<AdbResponse<boolean>>;
+  resumeTransfer: () => Promise<AdbResponse<boolean>>;
+  cancelTransfer: () => Promise<AdbResponse<boolean>>;
+  onTransferProgress?: (callback: (data: { percentage: number; file: string; type: 'upload' | 'download' }) => void) => () => void;
+
+
+
 }
 
 declare global {
@@ -152,3 +191,5 @@ declare global {
     android: AndroidApi;
   }
 }
+
+

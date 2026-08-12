@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import electronPath from 'electron';
 
 const projectRoot = process.cwd();
 const localDist = path.join(projectRoot, 'node_modules', 'electron', 'dist');
@@ -9,12 +10,12 @@ const allowedDist = path.join(programDataDir, 'AdVardElectronDist');
 
 function prepareElectronBinary() {
   if (process.platform !== 'win32') {
-    return path.join(localDist, 'electron');
+    return typeof electronPath === 'string' ? electronPath : path.join(localDist, 'electron');
   }
 
   try {
     if (!fs.existsSync(localDist)) {
-      return path.join(localDist, 'electron.exe');
+      return typeof electronPath === 'string' ? electronPath : path.join(localDist, 'electron.exe');
     }
     const localExe = path.join(localDist, 'electron.exe');
     const targetExe = path.join(allowedDist, 'electron.exe');
@@ -27,7 +28,7 @@ function prepareElectronBinary() {
     }
     return targetExe;
   } catch (err) {
-    return path.join(localDist, 'electron.exe');
+    return typeof electronPath === 'string' ? electronPath : path.join(localDist, 'electron.exe');
   }
 }
 

@@ -39,32 +39,130 @@ export function getAdbLocateError(): string | null {
  * Core ADB runner. Uses child_process.spawn to avoid shell injection.
  * @param args - ADB arguments (e.g. ['-s', 'SERIAL', 'shell', 'getprop', 'ro.product.model'])
  */
-export async function runAdb(args: string[]): Promise<AdbResult> {
+let currentTransferProc: ReturnType<typeof spawn> | null = null;
+let cancelRequested = false;
+let isPausedState = false;
+
+export function isCancelRequested(): boolean {
+  return cancelRequested;
+}
+
+export function resetCancelFlag(): void {
+  cancelRequested = false;
+  isPausedState = false;
+}
+
+export function isTransferPaused(): boolean {
+  return isPausedState;
+}
+
+export function pauseActiveTransfer(): boolean {
+  isPausedState = true;
+  if (currentTransferProc && !currentTransferProc.killed) {
+    try {
+      currentTransferProc.kill('SIGSTOP');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function resumeActiveTransfer(): boolean {
+  isPausedState = false;
+  if (currentTransferProc && !currentTransferProc.killed) {
+    try {
+      currentTransferProc.kill('SIGCONT');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function cancelActiveTransfer(): boolean {
+  cancelRequested = true;
+  isPausedState = false;
+  if (currentTransferProc && !currentTransferProc.killed) {
+    try {
+      currentTransferProc.kill('SIGKILL');
+      currentTransferProc = null;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function runAdb(
+  args: string[],
+  onProgress?: (percentage: number, text: string) => void,
+  isTransferProcess: boolean = false
+): Promise<AdbResult> {
+  if (isTransferProcess && cancelRequested) {
+    return { stdout: '', stderr: 'Transfer cancelled by user', code: -1 };
+  }
+
   const adbPath = await getAdbPath();
+
 
   return new Promise((resolve) => {
     const proc = spawn(adbPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    if (isTransferProcess) {
+      currentTransferProc = proc;
+    }
 
-    let stdout = '';
-    let stderr = '';
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+
+    const handleChunk = (chunk: Buffer) => {
+      if (isTransferProcess && onProgress) {
+        const text = chunk.toString('utf8');
+        const match = text.match(/(\d{1,3})%/);
+        if (match && match[1]) {
+          const percent = parseInt(match[1], 10);
+          if (!isNaN(percent) && percent >= 0 && percent <= 100) {
+            onProgress(percent, text);
+          }
+        }
+      }
+    };
+
+
 
     proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8');
+      stdoutChunks.push(chunk);
+      handleChunk(chunk);
     });
 
     proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8');
+      stderrChunks.push(chunk);
+      handleChunk(chunk);
     });
 
     proc.on('close', (code) => {
+      if (isTransferProcess && currentTransferProc === proc) {
+        currentTransferProc = null;
+      }
+      const stdout = Buffer.concat(stdoutChunks).toString('utf8');
+      const stderr = Buffer.concat(stderrChunks).toString('utf8');
       resolve({ stdout, stderr, code: code ?? -1 });
     });
 
     proc.on('error', (err) => {
+      if (isTransferProcess && currentTransferProc === proc) {
+        currentTransferProc = null;
+      }
       resolve({ stdout: '', stderr: err.message, code: -1 });
     });
   });
 }
+
+
+
 
 /**
  * Binary ADB runner — collects raw Buffer output (for screenshot/binary data).

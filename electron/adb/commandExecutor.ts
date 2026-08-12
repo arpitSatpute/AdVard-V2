@@ -1,4 +1,8 @@
-import { runAdb, runAdbBinary } from './adbManager';
+import * as path from 'path';
+import { runAdb, runAdbBinary, isCancelRequested } from './adbManager';
+
+
+
 
 // ─── Key Events ─────────────────────────────────────────────────────────────
 
@@ -240,19 +244,205 @@ export async function uninstallApp(serial: string, packageName: string): Promise
 
 // ─── File Management ─────────────────────────────────────────────────────────
 
-export async function pushFile(serial: string, localPath: string, remotePath: string): Promise<void> {
-  const result = await runAdb(['-s', serial, 'push', localPath, remotePath]);
+import * as fs from 'fs';
+
+const JUNK_FILE_PATTERNS = ['.DS_Store', '.localized', 'Thumbs.db', 'desktop.ini'];
+
+function isJunkPath(fileName: string): boolean {
+  if (!fileName) return true;
+  if (fileName.startsWith('._')) return true;
+  if (fileName.includes('Icon') && (fileName.includes('\r') || fileName.includes('\n'))) return true;
+  return JUNK_FILE_PATTERNS.includes(fileName.trim());
+}
+
+export async function pushFile(
+  serial: string,
+  localPath: string,
+  remotePath: string,
+  onProgress?: (percentage: number) => void
+): Promise<void> {
+  if (isCancelRequested()) {
+    throw new Error('Transfer cancelled by user');
+  }
+
+  let cleanRemote = remotePath ? remotePath.split(' -> ')[0].trim() : '';
+
+  // Enforce Android phone Downloads path (/storage/emulated/0/Download/) for all file transfers
+  if (!cleanRemote.startsWith('/storage/emulated/0/Download')) {
+    cleanRemote = '/storage/emulated/0/Download/';
+  }
+
+  const target = cleanRemote.endsWith('/') ? cleanRemote : `${cleanRemote}/`;
+
+
+  if (!fs.existsSync(localPath)) {
+    throw new Error(`Local file or directory does not exist: ${localPath}`);
+  }
+
+  const baseName = path.basename(localPath);
+  if (isJunkPath(baseName)) {
+    return; // Skip OS metadata/junk files
+  }
+
+  // Replace characters prohibited on Android filesystems (: ? * < > | " ') with '_'
+  const safeBaseName = baseName.replace(/[:?*<>|"']/g, '_').trim();
+
+  const stat = fs.statSync(localPath);
+
+  if (stat.isFile()) {
+    const destFile = `${target}${safeBaseName}`;
+    let result = await runAdb(
+      ['-s', serial, 'push', '-p', localPath, destFile],
+      (pct) => onProgress?.(pct),
+      true
+    );
+
+    // If -p flag isn't supported by ADB version or fails, fallback without -p
+    if (result.code !== 0) {
+      result = await runAdb(
+        ['-s', serial, 'push', localPath, destFile],
+        (pct) => onProgress?.(pct),
+        true
+      );
+    }
+
+    // Fallback 1: If /storage/emulated/0/ path fails, try /sdcard/ symlink equivalent
+    if (result.code !== 0 && target.startsWith('/storage/emulated/0/')) {
+      const altTarget = target.replace('/storage/emulated/0/', '/sdcard/');
+      const altDestFile = `${altTarget}${safeBaseName}`;
+      result = await runAdb(
+        ['-s', serial, 'push', '-p', localPath, altDestFile],
+        (pct) => onProgress?.(pct),
+        true
+      );
+    }
+
+    if (result.code !== 0) {
+      throw new Error(`Push failed: ${result.stderr || result.stdout}`);
+    }
+
+    // Update modified timestamp to current date & time, set readable permissions & trigger Android Media Scanner
+    try {
+      await runAdb(['-s', serial, 'shell', 'touch', '-c', destFile]);
+      await runAdb(['-s', serial, 'shell', 'chmod', '664', destFile]);
+      await runAdb(['-s', serial, 'shell', 'cmd', 'media_provider', 'scan-file', destFile]);
+      await runAdb(['-s', serial, 'shell', 'am', 'broadcast', '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE', '-d', `file://${destFile}`]);
+    } catch {
+      // Ignore broadcast errors
+    }
+  } else if (stat.isDirectory()) {
+    const remoteSubDir = `${target}${safeBaseName}/`;
+    await runAdb(['-s', serial, 'shell', 'mkdir', '-p', remoteSubDir]);
+    try {
+      await runAdb(['-s', serial, 'shell', 'touch', '-c', remoteSubDir]);
+      await runAdb(['-s', serial, 'shell', 'chmod', '-R', '775', remoteSubDir]);
+    } catch {
+      // Ignore touch/chmod errors
+    }
+
+
+    const entries = fs.readdirSync(localPath);
+    for (const entry of entries) {
+      if (isJunkPath(entry)) continue;
+      const childLocalPath = path.join(localPath, entry);
+      await pushFile(serial, childLocalPath, remoteSubDir, onProgress);
+    }
+  }
+
+}
+
+
+
+
+export async function pullFile(
+  serial: string,
+  remotePath: string,
+  localPath: string,
+  onProgress?: (percentage: number) => void
+): Promise<void> {
+  // Clean up remote path (strip any symlink target arrows "-> target")
+  let cleanRemote = remotePath.split(' -> ')[0].trim();
+
+  // Prefer Internal Storage (/storage/emulated/0/) over /sdcard/ symlink
+  if (cleanRemote.startsWith('/sdcard/')) {
+    cleanRemote = cleanRemote.replace('/sdcard/', '/storage/emulated/0/');
+  }
+
+  // Trim trailing slash for folders so ADB pulls the directory entity itself
+  if (cleanRemote.length > 1 && cleanRemote.endsWith('/')) {
+    cleanRemote = cleanRemote.slice(0, -1);
+  }
+
+  let result = await runAdb(
+    ['-s', serial, 'pull', '-p', cleanRemote, localPath],
+    (pct) => onProgress?.(pct),
+    true
+  );
+
+  // Fallback if -p is unsupported
   if (result.code !== 0) {
-    throw new Error(`Push failed: ${result.stderr}`);
+    result = await runAdb(
+      ['-s', serial, 'pull', cleanRemote, localPath],
+      (pct) => onProgress?.(pct),
+      true
+    );
+  }
+
+  // Fallback 1: If /storage/emulated/0/ path fails, try /sdcard/ symlink equivalent
+  if (result.code !== 0 && cleanRemote.startsWith('/storage/emulated/0/')) {
+    const altRemote = cleanRemote.replace('/storage/emulated/0/', '/sdcard/');
+    result = await runAdb(
+      ['-s', serial, 'pull', '-p', altRemote, localPath],
+      (pct) => onProgress?.(pct),
+      true
+    );
+    if (result.code !== 0) {
+      result = await runAdb(
+        ['-s', serial, 'pull', altRemote, localPath],
+        (pct) => onProgress?.(pct),
+        true
+      );
+    }
+  }
+
+  // Fallback 2: If /sdcard/ path fails, try /storage/emulated/0/ equivalent
+  if (result.code !== 0 && cleanRemote.startsWith('/sdcard/')) {
+    const altRemote = cleanRemote.replace('/sdcard/', '/storage/emulated/0/');
+    result = await runAdb(
+      ['-s', serial, 'pull', '-p', altRemote, localPath],
+      (pct) => onProgress?.(pct),
+      true
+    );
+    if (result.code !== 0) {
+      result = await runAdb(
+        ['-s', serial, 'pull', altRemote, localPath],
+        (pct) => onProgress?.(pct),
+        true
+      );
+    }
+  }
+
+  // Fallback 3: Try exact raw original remotePath directly
+  const rawOriginal = remotePath.split(' -> ')[0].trim();
+  if (result.code !== 0 && rawOriginal !== cleanRemote) {
+    result = await runAdb(
+      ['-s', serial, 'pull', rawOriginal, localPath],
+      (pct) => onProgress?.(pct),
+      true
+    );
+  }
+
+  if (result.code !== 0) {
+    throw new Error(`Pull failed: ${result.stderr || result.stdout}`);
   }
 }
 
-export async function pullFile(serial: string, remotePath: string, localPath: string): Promise<void> {
-  const result = await runAdb(['-s', serial, 'pull', remotePath, localPath]);
-  if (result.code !== 0) {
-    throw new Error(`Pull failed: ${result.stderr}`);
-  }
-}
+
+
+
+
+
+
 
 // ─── Input & Touch Remote Control ──────────────────────────────────────────────
 

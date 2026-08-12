@@ -1,4 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
+
 
 export interface WirelessPairPayload {
   host: string;
@@ -149,10 +150,50 @@ contextBridge.exposeInMainWorld('android', {
   uninstallApp: (serial: string, packageName: string) =>
     ipcRenderer.invoke('adb:uninstall-app', serial, packageName),
 
-  // ─── File Management ────────────────────────────────────────────────────
+  // ─── File Management & Transfer ──────────────────────────────────────────
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+
+  getFilePreview: (serial: string, remotePath: string) =>
+
+    ipcRenderer.invoke('adb:get-file-preview', serial, remotePath),
+
+  listDirectory: (serial: string, remoteDir?: string) =>
+    ipcRenderer.invoke('adb:list-directory', serial, remoteDir),
+
+  createDirectory: (serial: string, remoteDir: string) =>
+    ipcRenderer.invoke('adb:create-directory', serial, remoteDir),
+
   pushFile: (serial: string, remotePath: string) =>
     ipcRenderer.invoke('adb:push-file', serial, remotePath),
 
-  pullFile: (serial: string, remotePath: string) =>
-    ipcRenderer.invoke('adb:pull-file', serial, remotePath),
+  pushFolder: (serial: string, remotePath: string) =>
+    ipcRenderer.invoke('adb:push-folder', serial, remotePath),
+
+  deleteFile: (serial: string, remotePath: string) =>
+    ipcRenderer.invoke('adb:delete-file', serial, remotePath),
+
+  renameFile: (serial: string, oldPath: string, newPath: string) =>
+    ipcRenderer.invoke('adb:rename-file', serial, oldPath, newPath),
+
+  pushPaths: (serial: string, localPaths: string[], remoteDir: string) =>
+    ipcRenderer.invoke('adb:push-paths', serial, localPaths, remoteDir),
+
+  pullPathTo: (serial: string, remotePath: string, localDestinationDir?: string) =>
+    ipcRenderer.invoke('adb:pull-path-to', serial, remotePath, localDestinationDir),
+
+  pauseTransfer: () => ipcRenderer.invoke('adb:pause-transfer'),
+  resumeTransfer: () => ipcRenderer.invoke('adb:resume-transfer'),
+  cancelTransfer: () => ipcRenderer.invoke('adb:cancel-transfer'),
+
+  onTransferProgress: (callback: (data: { percentage: number; file: string; type: 'upload' | 'download' }) => void) => {
+
+    const listener = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('adb:transfer-progress', listener);
+    return () => {
+      ipcRenderer.removeListener('adb:transfer-progress', listener);
+    };
+  },
 });
+
+
+

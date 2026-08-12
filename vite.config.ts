@@ -17,10 +17,12 @@ function adbApiPlugin() {
           try {
             const { channel, args = [] } = JSON.parse(body || '{}');
 
-            const deviceManager = await import('./dist/electron/adb/deviceManager.mjs');
-            const adbManager = await import('./dist/electron/adb/adbManager.mjs');
-            const commandExecutor = await import('./dist/electron/adb/commandExecutor.mjs');
-            const connectionManager = await import('./dist/electron/adb/connectionManager.mjs');
+            const ts = Date.now();
+            const deviceManager = await import(`./dist/electron/adb/deviceManager.mjs?t=${ts}`);
+            const adbManager = await import(`./dist/electron/adb/adbManager.mjs?t=${ts}`);
+            const commandExecutor = await import(`./dist/electron/adb/commandExecutor.mjs?t=${ts}`);
+            const connectionManager = await import(`./dist/electron/adb/connectionManager.mjs?t=${ts}`);
+
 
             let result: any = { success: true };
 
@@ -188,12 +190,61 @@ function adbApiPlugin() {
               case 'adb:uninstall-app':
                 await commandExecutor.uninstallApp(args[0], args[1]);
                 break;
-              case 'adb:keyevent':
-                await commandExecutor.sendKeyEvent(args[0], args[1]);
+              case 'adb:get-file-preview': {
+                const fileExplorerService = await import(`./dist/electron/services/fileExplorerService.mjs?t=${ts}`);
+                result = { success: true, data: await fileExplorerService.getFilePreview(args[0], args[1]) };
                 break;
+              }
+              case 'adb:list-directory': {
+                const fileExplorerService = await import(`./dist/electron/services/fileExplorerService.mjs?t=${ts}`);
+                result = { success: true, data: await fileExplorerService.listDirectory(args[0], args[1]) };
+                break;
+              }
+              case 'adb:create-directory': {
+                const fileExplorerService = await import(`./dist/electron/services/fileExplorerService.mjs?t=${ts}`);
+                await fileExplorerService.createDirectory(args[0], args[1]);
+                break;
+              }
+              case 'adb:delete-file': {
+                const fileExplorerService = await import(`./dist/electron/services/fileExplorerService.mjs?t=${ts}`);
+                await fileExplorerService.deleteRemoteFile(args[0], args[1]);
+                break;
+              }
+              case 'adb:rename-file': {
+                const fileExplorerService = await import(`./dist/electron/services/fileExplorerService.mjs?t=${ts}`);
+                await fileExplorerService.renameRemoteFile(args[0], args[1], args[2]);
+                break;
+              }
+
+              case 'adb:push-file':
+                await commandExecutor.pushFile(args[0], args[1], args[2] || '/storage/emulated/0/Download/');
+                break;
+              case 'adb:push-paths':
+                for (const p of (args[1] || [])) {
+                  await commandExecutor.pushFile(args[0], p, args[2] || '/storage/emulated/0/Download/');
+                }
+                break;
+              case 'adb:pull-file':
+              case 'adb:pull-path-to':
+                await commandExecutor.pullFile(args[0], args[1], args[2]);
+                break;
+              case 'adb:pause-transfer': {
+                result = { success: adbManager.pauseActiveTransfer() };
+                break;
+              }
+              case 'adb:resume-transfer': {
+                result = { success: adbManager.resumeActiveTransfer() };
+                break;
+              }
+              case 'adb:cancel-transfer': {
+                result = { success: adbManager.cancelActiveTransfer() };
+                break;
+              }
+
               default:
                 result = { success: false, error: `Unknown channel: ${channel}` };
             }
+
 
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result));
@@ -217,5 +268,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      ignored: ['**/dist/**'],
+    },
   },
 });
