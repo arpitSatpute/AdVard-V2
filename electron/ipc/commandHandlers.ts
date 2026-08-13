@@ -19,6 +19,11 @@ import {
   makeCall,
   answerCall,
   endCall,
+  getCallState,
+  getContacts,
+  setAudioRoute,
+  toggleMuteMic,
+  sendDtmfTone,
   tapScreen,
   swipeScreen,
   inputText,
@@ -91,6 +96,51 @@ export function registerCommandHandlers(): void {
   ipcMain.handle('adb:call-end', async (_event, serial: string) => {
     try {
       await endCall(serial);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('adb:get-call-state', async (_event, serial: string) => {
+    try {
+      const data = await getCallState(serial);
+      return { success: true, data };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('adb:get-contacts', async (_event, serial: string) => {
+    try {
+      const data = await getContacts(serial);
+      return { success: true, data };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('adb:set-audio-route', async (_event, serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset') => {
+    try {
+      await setAudioRoute(serial, route);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('adb:mute-mic', async (_event, serial: string, mute: boolean) => {
+    try {
+      await toggleMuteMic(serial, mute);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('adb:send-dtmf', async (_event, serial: string, digit: string) => {
+    try {
+      await sendDtmfTone(serial, digit);
       return { success: true };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : String(err) };

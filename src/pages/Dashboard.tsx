@@ -9,8 +9,10 @@ import { ScreenshotViewer } from '../components/ScreenshotViewer';
 import { ShellTerminal } from '../components/ShellTerminal';
 import { AppManager } from '../components/AppManager';
 import { FileSharingSystem } from '../components/FileSharingSystem';
+import { CallServiceOverlay } from '../components/CallServiceOverlay';
+import { CallsAndContactsTab } from '../components/CallsAndContactsTab';
 import { useDeviceInfo } from '../hooks/useDeviceInfo';
-import { Smartphone, FolderSync, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Smartphone, FolderSync, SlidersHorizontal, PhoneCall, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
   serial: string;
@@ -19,10 +21,13 @@ interface DashboardProps {
 export function Dashboard({ serial }: DashboardProps) {
   const { info, isLoading, error, refetch } = useDeviceInfo(serial);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'controls'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'calls' | 'controls'>('files');
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-surface-900">
+    <div className="flex-1 flex flex-col overflow-hidden bg-surface-900 relative">
+      {/* Real-time Call Management Service Popup / Overlay */}
+      <CallServiceOverlay serial={serial} />
+
       {/* Primary Top Tab Navigation */}
       <div className="px-6 py-3 bg-surface-900 border-b border-surface-600/80 flex items-center justify-between shrink-0 shadow-md z-10">
         <div className="flex items-center gap-3">
@@ -39,7 +44,7 @@ export function Dashboard({ serial }: DashboardProps) {
         <div className="flex items-center gap-2 bg-surface-800 p-1.5 rounded-2xl border border-surface-600">
           <button
             onClick={() => setActiveTab('files')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'files'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
@@ -49,8 +54,19 @@ export function Dashboard({ serial }: DashboardProps) {
           </button>
 
           <button
+            onClick={() => setActiveTab('calls')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'calls'
+                ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
+            }`}
+          >
+            <PhoneCall size={16} /> Calls & Contacts
+          </button>
+
+          <button
             onClick={() => setActiveTab('controls')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'controls'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
@@ -65,6 +81,8 @@ export function Dashboard({ serial }: DashboardProps) {
       <div className="flex-1 overflow-y-auto p-5">
         {activeTab === 'files' ? (
           <FileSharingSystem serial={serial} />
+        ) : activeTab === 'calls' ? (
+          <CallsAndContactsTab serial={serial} />
         ) : (
           <div className="space-y-5 max-w-7xl mx-auto">
             {/* Device Info */}

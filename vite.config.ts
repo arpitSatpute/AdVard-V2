@@ -133,6 +133,21 @@ function adbApiPlugin() {
               case 'adb:call-end':
                 await commandExecutor.endCall(args[0]);
                 break;
+              case 'adb:get-call-state':
+                result = { success: true, data: await commandExecutor.getCallState(args[0]) };
+                break;
+              case 'adb:get-contacts':
+                result = { success: true, data: await commandExecutor.getContacts(args[0]) };
+                break;
+              case 'adb:set-audio-route':
+                await commandExecutor.setAudioRoute(args[0], args[1]);
+                break;
+              case 'adb:mute-mic':
+                await commandExecutor.toggleMuteMic(args[0], args[1]);
+                break;
+              case 'adb:send-dtmf':
+                await commandExecutor.sendDtmfTone(args[0], args[1]);
+                break;
               case 'adb:tap':
                 await commandExecutor.tapScreen(args[0], args[1], args[2]);
                 break;

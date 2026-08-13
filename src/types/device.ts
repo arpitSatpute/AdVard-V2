@@ -78,6 +78,18 @@ export interface NotificationItem {
   timestamp: string;
 }
 
+export interface CallStateInfo {
+  state: 'IDLE' | 'RINGING' | 'OFFHOOK';
+  number?: string;
+  callerName?: string;
+}
+
+export interface ContactItem {
+  id: string;
+  name: string;
+  number: string;
+  type?: string;
+}
 
 export interface FilePreviewData {
   type: 'image' | 'text' | 'binary';
@@ -133,6 +145,11 @@ export interface AndroidApi {
   makeCall: (serial: string, number: string) => Promise<AdbResponse>;
   answerCall: (serial: string) => Promise<AdbResponse>;
   endCall: (serial: string) => Promise<AdbResponse>;
+  getCallState: (serial: string) => Promise<AdbResponse<CallStateInfo>>;
+  getContacts: (serial: string) => Promise<AdbResponse<ContactItem[]>>;
+  setAudioRoute: (serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset') => Promise<AdbResponse>;
+  toggleMuteMic: (serial: string, mute: boolean) => Promise<AdbResponse>;
+  sendDtmfTone: (serial: string, digit: string) => Promise<AdbResponse>;
 
   // Touch Remote Control
   tap: (serial: string, x: number, y: number) => Promise<AdbResponse>;

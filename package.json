@@ -3,7 +3,7 @@
   "productName": "AdVard",
   "private": true,
   "type": "module",
-  "version": "3.2.5",
+  "version": "3.5.4",
   "description": "All-in-one desktop controller and file manager for Android devices.",
   "main": "dist/electron/main.mjs",
   "scripts": {

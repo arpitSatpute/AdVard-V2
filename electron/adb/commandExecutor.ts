@@ -105,6 +105,202 @@ export async function endCall(serial: string): Promise<void> {
   await sendKeyEvent(serial, KEYCODE_ENDCALL);
 }
 
+export interface CallStateInfo {
+  state: 'IDLE' | 'RINGING' | 'OFFHOOK';
+  number?: string;
+  callerName?: string;
+}
+
+export async function getCallState(serial: string): Promise<CallStateInfo> {
+  try {
+    const res = await runAdb(['-s', serial, 'shell', 'dumpsys', 'telephony.registry']);
+    let state: 'IDLE' | 'RINGING' | 'OFFHOOK' = 'IDLE';
+    let number = '';
+
+    if (res.code === 0) {
+      const output = res.stdout;
+      // Look for line like: mCallState=0 or mCallState=CALL_STATE_RINGING or mCallState=CALL_STATE_OFFHOOK
+      const match = output.match(/mCallState\s*=\s*(\d+|[A-Z_]+)/i);
+      if (match) {
+        const val = match[1].trim();
+        if (val === '1' || val.includes('RINGING')) {
+          state = 'RINGING';
+        } else if (val === '2' || val.includes('OFFHOOK')) {
+          state = 'OFFHOOK';
+        } else {
+          state = 'IDLE';
+        }
+      }
+
+      const numMatch = output.match(/mCallIncomingNumber\s*=\s*([+\d*#]+)/i) || output.match(/mIncomingNumber\s*=\s*([+\d*#]+)/i);
+      if (numMatch && numMatch[1] && numMatch[1] !== 'null') {
+        number = numMatch[1];
+      }
+    }
+
+    // Only fallback to telecom if telephony registry didn't give explicit numeric state 1 or 2
+    if (state === 'IDLE') {
+      const telecomRes = await runAdb(['-s', serial, 'shell', 'dumpsys', 'telecom']);
+      if (telecomRes.code === 0) {
+        const stdout = telecomRes.stdout;
+        if (/mState\s*=\s*RINGING/i.test(stdout) || /CallState\s*:\s*RINGING/i.test(stdout)) {
+          state = 'RINGING';
+        } else if (/mState\s*=\s*ACTIVE/i.test(stdout) || /CallState\s*:\s*ACTIVE/i.test(stdout) || /mState\s*=\s*DIALING/i.test(stdout)) {
+          state = 'OFFHOOK';
+        }
+      }
+    }
+
+    return { state, number: number || undefined };
+  } catch (err) {
+    return { state: 'IDLE' };
+  }
+}
+
+export interface ContactItem {
+  id: string;
+  name: string;
+  number: string;
+  type?: string;
+}
+
+export async function getContacts(serial: string): Promise<ContactItem[]> {
+  const contacts: ContactItem[] = [];
+  const seenNumbers = new Set<string>();
+
+  // Primary attempt: content://com.android.contacts/data/phones
+  // Alternative attempt: content://contacts/phones
+  const queries = [
+    { uri: 'content://com.android.contacts/data/phones', proj: 'display_name:number:type' },
+    { uri: 'content://contacts/phones', proj: 'name:number' },
+    { uri: 'content://com.android.contacts/contacts', proj: 'display_name:has_phone_number' },
+  ];
+
+  for (const q of queries) {
+    try {
+      const args = ['-s', serial, 'shell', 'content', 'query', '--uri', q.uri];
+      if (q.proj) {
+        args.push('--projection', q.proj);
+      }
+      const result = await runAdb(args);
+      if (result.code === 0 && result.stdout && !result.stdout.includes('Error')) {
+        const lines = result.stdout.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line.startsWith('Row:')) continue;
+
+          let name = '';
+          let num = '';
+          let typeVal = 'Mobile';
+
+          const nameMatch = line.match(/(?:display_name|name)=([^,]+)/i);
+          const numMatch = line.match(/number=([^,]+)/i);
+          const typeMatch = line.match(/type=([^,]+)/i);
+
+          if (nameMatch && nameMatch[1] && nameMatch[1] !== 'null') {
+            name = nameMatch[1].trim();
+          }
+          if (numMatch && numMatch[1] && numMatch[1] !== 'null') {
+            num = numMatch[1].trim();
+          }
+
+          if (num) {
+            const cleanKey = num.replace(/\D/g, '');
+            if (cleanKey && !seenNumbers.has(cleanKey)) {
+              seenNumbers.add(cleanKey);
+              if (typeMatch && typeMatch[1]) {
+                const t = typeMatch[1].trim();
+                typeVal = t === '2' ? 'Mobile' : t === '1' ? 'Home' : t === '3' ? 'Work' : 'Other';
+              }
+              contacts.push({
+                id: `contact_${contacts.length + 1}`,
+                name: name || 'Unknown',
+                number: num,
+                type: typeVal,
+              });
+            }
+          }
+        }
+
+        if (contacts.length > 0) {
+          break;
+        }
+      }
+    } catch {
+      // Continue to next fallback query
+    }
+  }
+
+  // Fallback to call log parsing if contacts database is restricted by Android security
+  if (contacts.length === 0) {
+    try {
+      const logRes = await runAdb([
+        '-s', serial, 'shell',
+        'content', 'query',
+        '--uri', 'content://call_log/calls',
+        '--projection', 'name:number:type'
+      ]);
+      if (logRes.code === 0 && logRes.stdout) {
+        const lines = logRes.stdout.split('\n');
+        for (const line of lines) {
+          if (!line.trim().startsWith('Row:')) continue;
+          const nameMatch = line.match(/name=([^,]+)/i);
+          const numMatch = line.match(/number=([^,]+)/i);
+          if (numMatch && numMatch[1] && numMatch[1] !== 'null') {
+            const num = numMatch[1].trim();
+            const cleanKey = num.replace(/\D/g, '');
+            if (cleanKey && !seenNumbers.has(cleanKey)) {
+              seenNumbers.add(cleanKey);
+              const name = nameMatch && nameMatch[1] && nameMatch[1] !== 'null' ? nameMatch[1].trim() : 'Call Log Entry';
+              contacts.push({
+                id: `contact_${contacts.length + 1}`,
+                name,
+                number: num,
+                type: 'Recent',
+              });
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return contacts;
+}
+
+// ─── Audio Output & In-Call Audio Controls ─────────────────────────────
+
+export async function setAudioRoute(serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset'): Promise<void> {
+  let cmd = '';
+  if (route === 'speaker') {
+    cmd = 'cmd audio set-speakerphone-on true || media volume --stream 0 --set 15';
+  } else if (route === 'earpiece') {
+    cmd = 'cmd audio set-speakerphone-on false';
+  } else if (route === 'bluetooth') {
+    cmd = 'service call audio 26 i32 1 || cmd audio set-speakerphone-on false';
+  } else {
+    cmd = 'cmd audio set-speakerphone-on false';
+  }
+
+  await runAdb(['-s', serial, 'shell', cmd]);
+}
+
+export async function toggleMuteMic(serial: string, mute: boolean): Promise<void> {
+  const arg = mute ? 'true' : 'false';
+  await runAdb(['-s', serial, 'shell', `cmd audio set-microphone-mute ${arg} || input keyevent 164`]);
+}
+
+export async function sendDtmfTone(serial: string, digit: string): Promise<void> {
+  const keycodeMap: Record<string, number> = {
+    '0': 7, '1': 8, '2': 9, '3': 10, '4': 11, '5': 12, '6': 13, '7': 14, '8': 15, '9': 16,
+    '*': 17, '#': 18
+  };
+  const keycode = keycodeMap[digit];
+  if (keycode) {
+    await sendKeyEvent(serial, keycode);
+  }
+}
+
 // ─── Brightness Control ──────────────────────────────────────────────────────
 
 export async function getBrightness(serial: string): Promise<number> {

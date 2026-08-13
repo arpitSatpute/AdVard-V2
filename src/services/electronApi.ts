@@ -10,6 +10,8 @@ import type {
   QrSessionData,
   FileItem,
   FilePreviewData,
+  CallStateInfo,
+  ContactItem,
 } from '../types/device';
 
 async function invokeHttp(channel: string, ...args: any[]): Promise<any> {
@@ -44,6 +46,11 @@ const httpApi = {
   makeCall: (serial: string, number: string) => invokeHttp('adb:call-make', serial, number),
   answerCall: (serial: string) => invokeHttp('adb:call-answer', serial),
   endCall: (serial: string) => invokeHttp('adb:call-end', serial),
+  getCallState: (serial: string) => invokeHttp('adb:get-call-state', serial),
+  getContacts: (serial: string) => invokeHttp('adb:get-contacts', serial),
+  setAudioRoute: (serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset') => invokeHttp('adb:set-audio-route', serial, route),
+  toggleMuteMic: (serial: string, mute: boolean) => invokeHttp('adb:mute-mic', serial, mute),
+  sendDtmfTone: (serial: string, digit: string) => invokeHttp('adb:send-dtmf', serial, digit),
   tap: (serial: string, x: number, y: number) => invokeHttp('adb:tap', serial, x, y),
   swipe: (serial: string, x1: number, y1: number, x2: number, y2: number, duration?: number) => invokeHttp('adb:swipe', serial, x1, y1, x2, y2, duration),
   inputText: (serial: string, text: string) => invokeHttp('adb:input-text', serial, text),
@@ -158,6 +165,26 @@ export async function answerCall(serial: string): Promise<AdbResponse> {
 
 export async function endCall(serial: string): Promise<AdbResponse> {
   return getApi().endCall(serial);
+}
+
+export async function getCallState(serial: string): Promise<AdbResponse<CallStateInfo>> {
+  return getApi().getCallState(serial);
+}
+
+export async function getContacts(serial: string): Promise<AdbResponse<ContactItem[]>> {
+  return getApi().getContacts(serial);
+}
+
+export async function setAudioRoute(serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset'): Promise<AdbResponse> {
+  return getApi().setAudioRoute(serial, route);
+}
+
+export async function toggleMuteMic(serial: string, mute: boolean): Promise<AdbResponse> {
+  return getApi().toggleMuteMic(serial, mute);
+}
+
+export async function sendDtmfTone(serial: string, digit: string): Promise<AdbResponse> {
+  return getApi().sendDtmfTone(serial, digit);
 }
 
 // ─── Touch Remote Control ──────────────────────────────────────────────────────

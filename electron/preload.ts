@@ -80,6 +80,21 @@ contextBridge.exposeInMainWorld('android', {
   endCall: (serial: string) =>
     ipcRenderer.invoke('adb:call-end', serial),
 
+  getCallState: (serial: string) =>
+    ipcRenderer.invoke('adb:get-call-state', serial),
+
+  getContacts: (serial: string) =>
+    ipcRenderer.invoke('adb:get-contacts', serial),
+
+  setAudioRoute: (serial: string, route: 'speaker' | 'earpiece' | 'bluetooth' | 'headset') =>
+    ipcRenderer.invoke('adb:set-audio-route', serial, route),
+
+  toggleMuteMic: (serial: string, mute: boolean) =>
+    ipcRenderer.invoke('adb:mute-mic', serial, mute),
+
+  sendDtmfTone: (serial: string, digit: string) =>
+    ipcRenderer.invoke('adb:send-dtmf', serial, digit),
+
   // ─── Touch Remote Control ───────────────────────────────────────────────
   tap: (serial: string, x: number, y: number) =>
     ipcRenderer.invoke('adb:tap', serial, x, y),
