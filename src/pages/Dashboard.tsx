@@ -93,16 +93,6 @@ export function Dashboard({ serial }: DashboardProps) {
               onRefresh={refetch}
             />
 
-            {/* Interactive Remote Screen Mirroring */}
-            <ScreenMirror
-              serial={serial}
-              resolution={info?.resolution || '1080x2400'}
-            />
-
-            {/* Phone Call Manager */}
-
-            <PhoneCallManager serial={serial} />
-
             {/* Controls & Security row */}
             <div className="grid grid-cols-2 gap-4">
               <NavigationControls serial={serial} />
@@ -111,6 +101,15 @@ export function Dashboard({ serial }: DashboardProps) {
 
             {/* Media, Volume & Brightness Controls */}
             <MediaVolumeControls serial={serial} />
+
+            {/* Phone Call Quick Manager */}
+            <PhoneCallManager serial={serial} />
+
+            {/* Interactive Remote Screen Mirroring */}
+            <ScreenMirror
+              serial={serial}
+              resolution={info?.resolution || '1080x2400'}
+            />
 
             {/* Screenshot viewer */}
             {screenshot && (

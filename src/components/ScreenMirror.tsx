@@ -135,25 +135,43 @@ export function ScreenMirror({ serial, resolution }: ScreenMirrorProps) {
             </span>
           )}
         </div>
-        <button
-          id="toggle-screen-mirror-btn"
-          onClick={() => setIsStreaming(!isStreaming)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            isStreaming
-              ? 'bg-danger/20 border border-danger/40 text-danger hover:bg-danger/30'
-              : 'bg-accent/20 border border-accent/40 text-accent-light hover:bg-accent/30'
-          }`}
-        >
-          {isStreaming ? (
-            <>
-              <Pause size={12} /> Stop Mirroring
-            </>
-          ) : (
-            <>
-              <Play size={12} /> Start Screen Mirroring
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Quick Navigation Toolbar */}
+          <div className="flex items-center gap-1 bg-surface-900/80 p-1 rounded-xl border border-surface-600/80 mr-2">
+            <button
+              onClick={async () => {
+                try {
+                  const { pressHome } = await import('../services/electronApi');
+                  await pressHome(serial);
+                } catch {}
+              }}
+              title="Home Button"
+              className="p-1.5 rounded-lg bg-surface-700 hover:bg-surface-600 text-gray-300 hover:text-white transition-all active:scale-95"
+            >
+              <Smartphone size={13} />
+            </button>
+          </div>
+
+          <button
+            id="toggle-screen-mirror-btn"
+            onClick={() => setIsStreaming(!isStreaming)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isStreaming
+                ? 'bg-danger/20 border border-danger/40 text-danger hover:bg-danger/30'
+                : 'bg-accent/20 border border-accent/40 text-accent-light hover:bg-accent/30'
+            }`}
+          >
+            {isStreaming ? (
+              <>
+                <Pause size={12} /> Stop Mirroring
+              </>
+            ) : (
+              <>
+                <Play size={12} /> Start Screen Mirroring
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Screen Canvas Area */}
