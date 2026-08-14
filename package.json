@@ -1,6 +1,7 @@
 {
   "name": "advard",
   "productName": "AdVard",
+  "author": "AdVard",
   "private": true,
   "type": "module",
   "version": "3.5.4",
@@ -14,7 +15,7 @@
     "build:renderer": "vite build",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "node scripts/dist-win.js",
     "dist:linux": "npm run build && electron-builder --linux",
     "electron": "node scripts/start-electron.js .",
     "start": "npm run dev",
@@ -48,38 +49,5 @@
     "typescript": "^5.8.3",
     "vite": "^8.2.0",
     "wait-on": "^9.1.0"
-  },
-  "build": {
-    "appId": "com.advard.app",
-    "productName": "AdVard",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "target": "dmg",
-      "identity": null,
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "allowElevation": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "AdVard",
-      "guid": "com.advard.app",
-      "perMachine": false,
-      "uninstallDisplayName": "AdVard"
-    }
   }
 }
