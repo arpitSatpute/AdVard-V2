@@ -10,6 +10,7 @@ export interface NotificationItem {
   timestamp: string;
   postTime?: number;
   category?: string;
+  isLocked?: boolean;
 }
 
 /**
@@ -98,21 +99,24 @@ export async function getNotifications(serial: string): Promise<NotificationItem
   let currentTicker = '';
   let currentCategory = '';
   let currentKey = '';
+  let currentIsLocked = false;
 
   const isPlaceholderText = (val: string): boolean => {
     if (!val) return true;
-    const t = val.trim().toLowerCase();
-    if (t.length <= 1 || t === 'null') return true;
+    const t = val.trim();
+    if (t.length === 0 || t.toLowerCase() === 'null') return true;
 
-    // Match any string ending with dots/ellipsis e.g. "Message ...", "Message...", "Wireless...", "Wireless..."
-    if (/(\.\.\.|\u2026|\.\s*\.\s*\.)$/.test(t)) return true;
-
-    // Match generic placeholder prefix words e.g. "message", "wireless", "notification"
-    if (/^(message|wireless|notification|system)\b/i.test(t) && (t.includes('.') || t.includes('…'))) {
-      return true;
-    }
+    // Match exact dots/ellipsis placeholders e.g. "Message ...", "Message...", "Wireless..."
+    if (/^(message|wireless|notification)\s*(\.\.\.|\u2026)$/i.test(t)) return true;
+    if (/^(\.\.\.|\u2026)$/.test(t)) return true;
 
     return false;
+  };
+
+  const isSystemPackage = (pkg: string): boolean => {
+    if (!pkg) return false;
+    const p = pkg.toLowerCase();
+    return p === 'android' || p === 'com.android.systemui' || p === 'com.android.adb' || p.includes('adb.wireless');
   };
 
   const flushCurrent = () => {
@@ -129,37 +133,21 @@ export async function getNotifications(serial: string): Promise<NotificationItem
         } else if (currentTicker && !isPlaceholderText(currentTicker)) {
           finalTitle = currentTicker;
         } else {
-          // Generate clean descriptive title based on app package
-          const lowerPkg = currentPkg.toLowerCase();
-          if (lowerPkg.includes('whatsapp')) {
+          // Generate clean title based on app package
+          if (isSystemPackage(currentPkg)) {
+            finalTitle = 'Wireless Debugging & System Service';
+          } else if (currentPkg.toLowerCase().includes('whatsapp')) {
             finalTitle = 'WhatsApp Message';
-          } else if (lowerPkg.includes('android') || lowerPkg.includes('wireless') || lowerPkg.includes('system')) {
-            finalTitle = 'Wireless & System Service';
           } else {
-            finalTitle = `${appName} Alert`;
+            finalTitle = `${appName} Notification`;
           }
         }
       }
 
       // Resolve best body text
-      let bodyText = currentBigText || currentText || currentTicker || currentSubText || '';
-      if (isPlaceholderText(bodyText)) {
-        if (currentBigText && !isPlaceholderText(currentBigText)) {
-          bodyText = currentBigText;
-        } else if (currentSubText && !isPlaceholderText(currentSubText)) {
-          bodyText = currentSubText;
-        } else if (currentTicker && !isPlaceholderText(currentTicker)) {
-          bodyText = currentTicker;
-        } else {
-          bodyText = finalTitle.includes('Message')
-            ? 'New message received'
-            : `${appName} notification active`;
-        }
-      }
-
-      // Don't duplicate title in text if bodyText is identical to title
-      if (bodyText === finalTitle || isPlaceholderText(bodyText)) {
-        bodyText = currentSubText || `${appName} service notification`;
+      let bodyText = (currentBigText && !isPlaceholderText(currentBigText) ? currentBigText : currentText) || currentTicker || currentSubText || '';
+      if (isPlaceholderText(bodyText) || bodyText === finalTitle) {
+        bodyText = (currentSubText && !isPlaceholderText(currentSubText)) ? currentSubText : '';
       }
 
       const cleanPkg = currentPkg;
@@ -173,6 +161,7 @@ export async function getNotifications(serial: string): Promise<NotificationItem
         text: bodyText,
         subText: currentSubText || undefined,
         category: currentCategory || undefined,
+        isLocked: currentIsLocked,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         postTime: Date.now(),
       });
@@ -188,6 +177,7 @@ export async function getNotifications(serial: string): Promise<NotificationItem
     currentTicker = '';
     currentCategory = '';
     currentKey = '';
+    currentIsLocked = false;
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -218,8 +208,16 @@ export async function getNotifications(serial: string): Promise<NotificationItem
       }
     }
 
+    // Check if line indicates lockscreen redaction placeholder
+    if (
+      (line.includes('android.title=') || line.includes('android.text=')) &&
+      /\[length=\d+\]/i.test(line)
+    ) {
+      currentIsLocked = true;
+    }
+
     // Title
-    const titleVal = extractValue(line, 'android.title');
+    const titleVal = extractValue(line, 'android.title') || extractValue(line, 'android.title.big');
     if (titleVal) currentTitle = titleVal;
 
     // Text
@@ -231,11 +229,11 @@ export async function getNotifications(serial: string): Promise<NotificationItem
     if (bigTextVal) currentBigText = bigTextVal;
 
     // SubText
-    const subTextVal = extractValue(line, 'android.subText');
+    const subTextVal = extractValue(line, 'android.subText') || extractValue(line, 'android.infoText');
     if (subTextVal) currentSubText = subTextVal;
 
     // Conversation Title
-    const convTitleVal = extractValue(line, 'android.conversationTitle');
+    const convTitleVal = extractValue(line, 'android.conversationTitle') || extractValue(line, 'android.hiddenConversationTitle');
     if (convTitleVal) currentConversationTitle = convTitleVal;
 
     // Summary Text
