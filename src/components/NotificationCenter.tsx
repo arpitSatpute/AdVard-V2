@@ -13,13 +13,10 @@ import {
   Filter,
   Sparkles,
   Send,
-  Lock,
-  Unlock,
   ShieldAlert,
 } from 'lucide-react';
 import { getNotifications, showHostNotification } from '../services/electronApi';
 import type { NotificationItem } from '../types/device';
-import { UnlockModal } from './UnlockModal';
 import { useToast } from './Toast';
 
 interface NotificationCenterProps {
@@ -35,7 +32,6 @@ export function NotificationCenter({ serial }: NotificationCenterProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [hostNotificationEnabled, setHostNotificationEnabled] = useState<boolean>(true);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
-  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState<boolean>(false);
 
   const { showToast } = useToast();
 
@@ -154,13 +150,6 @@ export function NotificationCenter({ serial }: NotificationCenterProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-surface-900 text-gray-200 overflow-hidden space-y-4 max-w-7xl mx-auto w-full">
-      {/* Device PIN / Unlock Modal */}
-      <UnlockModal
-        serial={serial}
-        isOpen={isUnlockModalOpen}
-        onClose={() => setIsUnlockModalOpen(false)}
-      />
-
       {/* Top Banner Header */}
       <div className="bg-surface-800 p-5 rounded-2xl border border-surface-600 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -252,7 +241,7 @@ export function NotificationCenter({ serial }: NotificationCenterProps) {
             <span>Fetching system notifications...</span>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          /* Empty / Hidden Content State with Unlock Option */
+          /* Empty Content State */
           <div className="py-14 px-6 text-center flex flex-col items-center justify-center gap-4 bg-surface-800/60 rounded-2xl border border-dashed border-surface-600">
             <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
               <ShieldAlert size={36} />
@@ -263,43 +252,28 @@ export function NotificationCenter({ serial }: NotificationCenterProps) {
                 No Visible Notifications
               </h3>
               <p className="text-xs text-gray-400 leading-relaxed">
-                If the phone screen is locked or notification contents are hidden, unlock the device to view notifications.
+                There are currently no active notifications found for this device.
               </p>
             </div>
-
-            <button
-              onClick={() => setIsUnlockModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 active:scale-95 transition-all shadow-md"
-            >
-              <Unlock size={14} />
-              <span>Unlock Device</span>
-            </button>
           </div>
         ) : (
           filteredNotifications.map((item) => {
             const isExpanded = expandedIds.has(item.id);
 
-            // Clean title if placeholder e.g. "Message ..." or "Wireless..."
+            // Display title: use authentic item.title if present; fallback to appName only if empty or dots
             let cleanTitle = item.title;
-            if (!cleanTitle || /(\.\.\.|\u2026|\.\s*\.\s*\.)$/.test(cleanTitle.trim()) || /^(message|wireless|notification)\b/i.test(cleanTitle.trim())) {
-              if (item.packageName.toLowerCase().includes('whatsapp')) {
-                cleanTitle = 'WhatsApp Message';
-              } else if (item.packageName.toLowerCase().includes('wireless') || item.packageName.toLowerCase().includes('android')) {
-                cleanTitle = 'Wireless Debugging Service';
+            const isPlaceholderTitle = !cleanTitle || /^(message|wireless|notification)\s*(\.\.\.|\u2026)$/i.test(cleanTitle.trim()) || /^(\.\.\.|\u2026)$/.test(cleanTitle.trim());
+            if (isPlaceholderTitle) {
+              const p = item.packageName.toLowerCase();
+              if (p === 'android' || p === 'com.android.systemui' || p.includes('adb.wireless')) {
+                cleanTitle = 'Wireless Debugging & System Service';
               } else {
-                cleanTitle = `${item.appName} Notification`;
+                cleanTitle = item.appName;
               }
             }
 
-            // Clean text body
-            let cleanBody = item.text;
-            if (cleanBody && ( /(\.\.\.|\u2026|\.\s*\.\s*\.)$/.test(cleanBody.trim()) || /^(message|wireless|notification)\b/i.test(cleanBody.trim()) )) {
-              if (item.subText && !/(\.\.\.|\u2026)$/.test(item.subText)) {
-                cleanBody = item.subText;
-              } else {
-                cleanBody = `${item.appName} active notification`;
-              }
-            }
+            // Display body: use item.text or subText
+            const cleanBody = item.text || item.subText || '';
 
             // Render text fully by default; only offer collapse option for very long messages (> 400 chars)
             const isVeryLongText = cleanBody && cleanBody.length > 400;
@@ -363,27 +337,12 @@ export function NotificationCenter({ serial }: NotificationCenterProps) {
                 {/* Title & Full Body Content */}
                 <div className="mt-2.5">
                   <h3 className="text-sm sm:text-base font-bold text-gray-100 break-words leading-snug">{cleanTitle}</h3>
-                  {item.text ? (
+                  {displayText && (
                     <p className="text-xs text-gray-300 leading-relaxed mt-1 whitespace-pre-wrap break-words">
                       {displayText}
                     </p>
-                  ) : (
-                    /* Content not visible / hidden prompt */
-                    <div className="mt-2 p-2.5 rounded-xl bg-surface-900/90 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2 text-xs text-amber-300">
-                        <Lock size={14} className="shrink-0 text-amber-400" />
-                        <span>Content restricted or screen locked</span>
-                      </div>
-
-                      <button
-                        onClick={() => setIsUnlockModalOpen(true)}
-                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1 shrink-0"
-                      >
-                        <Unlock size={12} /> Unlock Device
-                      </button>
-                    </div>
                   )}
-                  {item.subText && (
+                  {item.subText && item.subText !== displayText && (
                     <p className="text-[11px] text-gray-400 italic mt-1">{item.subText}</p>
                   )}
                 </div>
