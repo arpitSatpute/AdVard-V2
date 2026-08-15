@@ -11,8 +11,10 @@ import { AppManager } from '../components/AppManager';
 import { FileSharingSystem } from '../components/FileSharingSystem';
 import { CallServiceOverlay } from '../components/CallServiceOverlay';
 import { CallsAndContactsTab } from '../components/CallsAndContactsTab';
+import { NotificationCenter } from '../components/NotificationCenter';
+import { NotificationBannerOverlay } from '../components/NotificationBannerOverlay';
 import { useDeviceInfo } from '../hooks/useDeviceInfo';
-import { Smartphone, FolderSync, SlidersHorizontal, PhoneCall, Sparkles } from 'lucide-react';
+import { Smartphone, FolderSync, SlidersHorizontal, PhoneCall, Bell, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
   serial: string;
@@ -21,12 +23,18 @@ interface DashboardProps {
 export function Dashboard({ serial }: DashboardProps) {
   const { info, isLoading, error, refetch } = useDeviceInfo(serial);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'calls' | 'controls'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'calls' | 'notifications' | 'controls'>('files');
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-surface-900 relative">
       {/* Real-time Call Management Service Popup / Overlay */}
       <CallServiceOverlay serial={serial} />
+
+      {/* Real-time Notification Banner Overlay */}
+      <NotificationBannerOverlay
+        serial={serial}
+        onOpenNotificationsTab={() => setActiveTab('notifications')}
+      />
 
       {/* Primary Top Tab Navigation */}
       <div className="px-6 py-3 bg-surface-900 border-b border-surface-600/80 flex items-center justify-between shrink-0 shadow-md z-10">
@@ -65,6 +73,17 @@ export function Dashboard({ serial }: DashboardProps) {
           </button>
 
           <button
+            onClick={() => setActiveTab('notifications')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'notifications'
+                ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
+            }`}
+          >
+            <Bell size={16} /> Notifications
+          </button>
+
+          <button
             onClick={() => setActiveTab('controls')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'controls'
@@ -83,6 +102,8 @@ export function Dashboard({ serial }: DashboardProps) {
           <FileSharingSystem serial={serial} />
         ) : activeTab === 'calls' ? (
           <CallsAndContactsTab serial={serial} />
+        ) : activeTab === 'notifications' ? (
+          <NotificationCenter serial={serial} />
         ) : (
           <div className="space-y-5 max-w-7xl mx-auto">
             {/* Device Info */}

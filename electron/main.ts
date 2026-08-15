@@ -6,6 +6,7 @@ import { registerCommandHandlers } from './ipc/commandHandlers';
 import { registerScreenshotHandlers } from './ipc/screenshotHandlers';
 import { registerFileHandlers } from './ipc/fileHandlers';
 import { registerWirelessHandlers } from './ipc/wirelessHandlers';
+import { registerAdvancedUpgradeHandlers } from './ipc/upgradeHandlers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,7 @@ function registerIpcHandlers(): void {
   registerScreenshotHandlers();
   registerFileHandlers();
   registerWirelessHandlers();
+  registerAdvancedUpgradeHandlers();
 }
 
 app.whenReady().then(() => {

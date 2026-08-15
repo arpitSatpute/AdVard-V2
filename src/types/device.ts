@@ -71,11 +71,14 @@ export interface FileItem {
 
 export interface NotificationItem {
   id: string;
+  packageName: string;
+  appName: string;
   title: string;
-  body: string;
-  text?: string;
-  appName?: string;
+  text: string;
+  subText?: string;
+  category?: string;
   timestamp: string;
+  postTime?: number;
 }
 
 export interface CallStateInfo {
@@ -199,8 +202,9 @@ export interface AndroidApi {
   cancelTransfer: () => Promise<AdbResponse<boolean>>;
   onTransferProgress?: (callback: (data: { percentage: number; file: string; type: 'upload' | 'download' }) => void) => () => void;
 
-
-
+  // Notifications
+  getNotifications: (serial: string) => Promise<AdbResponse<NotificationItem[]>>;
+  showHostNotification: (title: string, body: string, appName?: string) => Promise<AdbResponse>;
 }
 
 declare global {

@@ -208,6 +208,13 @@ contextBridge.exposeInMainWorld('android', {
       ipcRenderer.removeListener('adb:transfer-progress', listener);
     };
   },
+
+  // ─── Notification Center & Host Desktop Notifications ────────────────────
+  getNotifications: (serial: string) =>
+    ipcRenderer.invoke('adb:get-notifications', serial),
+
+  showHostNotification: (title: string, body: string, appName?: string) =>
+    ipcRenderer.invoke('adb:show-host-notification', { title, body, appName }),
 });
 
 

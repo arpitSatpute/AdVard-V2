@@ -12,6 +12,7 @@ import type {
   FilePreviewData,
   CallStateInfo,
   ContactItem,
+  NotificationItem,
 } from '../types/device';
 
 async function invokeHttp(channel: string, ...args: any[]): Promise<any> {
@@ -380,8 +381,32 @@ export async function sendPhoneClipboard(serial: string, text: string): Promise<
   return execApiCall('sendPhoneClipboard', serial, text);
 }
 
-export async function getNotifications(serial: string): Promise<AdbResponse<any[]>> {
+export async function getNotifications(serial: string): Promise<AdbResponse<NotificationItem[]>> {
   return execApiCall('getNotifications', serial);
+}
+
+export async function showHostNotification(title: string, body: string, appName?: string): Promise<AdbResponse> {
+  const displayTitle = appName ? `📱 ${appName}: ${title}` : `📱 ${title}`;
+
+  // 1. Web Notification API trigger
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    try {
+      if (Notification.permission === 'granted') {
+        new window.Notification(displayTitle, { body: body || 'New notification' });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            new window.Notification(displayTitle, { body: body || 'New notification' });
+          }
+        });
+      }
+    } catch {
+      // Fallback to IPC
+    }
+  }
+
+  // 2. Electron Main Process IPC trigger
+  return execApiCall('showHostNotification', title, body, appName);
 }
 
 
