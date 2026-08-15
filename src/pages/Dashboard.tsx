@@ -44,7 +44,7 @@ export function Dashboard({ serial }: DashboardProps) {
           </div>
           <div>
             <h2 className="text-sm font-bold text-gray-100">Android Control & File Manager</h2>
-            <p className="text-[11px] text-gray-400">Device serial: <span className="font-mono text-accent-light">{serial}</span></p>
+            <p className="text-[11px] text-gray-400">All-in-one desktop controller and manager</p>
           </div>
         </div>
 
