@@ -32,6 +32,9 @@ contextBridge.exposeInMainWorld('android', {
   restartAdb: () =>
     ipcRenderer.invoke('adb:restart-adb'),
 
+  openCastWindow: (serial: string) =>
+    ipcRenderer.invoke('adb:open-cast-window', serial),
+
   // ─── Wireless ADB ────────────────────────────────────────────────────────
   generateQrCode: () =>
     ipcRenderer.invoke('adb:generate-qr'),

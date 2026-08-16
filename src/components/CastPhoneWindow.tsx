@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Smartphone, RefreshCw, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 import { takeScreenshot, tapScreen, swipeScreen, openCastWindow } from '../services/electronApi';
 import { useToast } from './Toast';
+import { formatDeviceSerial } from '../utils/deviceUtils';
 
 interface CastPhoneWindowProps {
   serial: string;
@@ -119,8 +120,8 @@ export function CastPhoneWindow({ serial, resolution = '1080x2400', isStandalone
       <div className="w-full max-w-[380px] flex items-center justify-between px-3 py-2 bg-surface-800 border border-surface-600 rounded-t-2xl text-xs">
         <div className="flex items-center gap-2">
           <Smartphone size={14} className="text-accent-light" />
-          <span className="font-semibold text-gray-300 truncate max-w-[140px]">
-            {serial}
+          <span className="font-semibold text-gray-300 truncate max-w-[140px]" title={serial}>
+            {formatDeviceSerial(serial)}
           </span>
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-success/20 text-success">
             {fps} FPS
@@ -131,10 +132,11 @@ export function CastPhoneWindow({ serial, resolution = '1080x2400', isStandalone
           {!isStandalone && (
             <button
               onClick={handleOpenSeparateWindow}
-              className="p-1 rounded hover:bg-surface-600 text-gray-400 hover:text-gray-200"
-              title="Open Separate Phone Window"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/15 border border-accent/30 text-accent-light hover:bg-accent/30 text-[11px] font-medium transition-all"
+              title="Open Separate Phone-Shaped Window Outside Application"
             >
-              <ExternalLink size={13} />
+              <ExternalLink size={12} />
+              <span>Pop-Out Phone</span>
             </button>
           )}
 

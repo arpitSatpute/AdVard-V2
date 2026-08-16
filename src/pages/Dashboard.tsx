@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DeviceInfoPanel } from '../components/DeviceInfo';
 import { NavigationControls } from '../components/NavigationControls';
 import { DeviceActions } from '../components/DeviceActions';
@@ -14,6 +14,7 @@ import { CallsAndContactsTab } from '../components/CallsAndContactsTab';
 import { NotificationCenter } from '../components/NotificationCenter';
 import { NotificationBannerOverlay } from '../components/NotificationBannerOverlay';
 import { useDeviceInfo } from '../hooks/useDeviceInfo';
+import { useToast } from '../components/Toast';
 import { Smartphone, FolderSync, SlidersHorizontal, PhoneCall, Bell, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
@@ -23,7 +24,22 @@ interface DashboardProps {
 export function Dashboard({ serial }: DashboardProps) {
   const { info, isLoading, error, refetch } = useDeviceInfo(serial);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'calls' | 'notifications' | 'controls'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'calls' | 'notifications' | 'controls'>('controls');
+  const { showToast } = useToast();
+  const prevChargingRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (info?.isCharging !== undefined && info.isCharging !== null) {
+      if (prevChargingRef.current !== null && prevChargingRef.current !== info.isCharging) {
+        if (info.isCharging) {
+          showToast(`Device is now charging ⚡ (${info.batteryLevel ?? ''}%)`, 'info');
+        } else {
+          showToast(`Device unplugged (Discharging • ${info.batteryLevel ?? ''}%)`, 'info');
+        }
+      }
+      prevChargingRef.current = info.isCharging;
+    }
+  }, [info?.isCharging, info?.batteryLevel, showToast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-surface-900 relative">
@@ -50,6 +66,17 @@ export function Dashboard({ serial }: DashboardProps) {
 
         {/* Tab Selector Buttons */}
         <div className="flex items-center gap-2 bg-surface-800 p-1.5 rounded-2xl border border-surface-600">
+          <button
+            onClick={() => setActiveTab('controls')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'controls'
+                ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
+            }`}
+          >
+            <SlidersHorizontal size={16} /> Remote Screen & Controls
+          </button>
+
           <button
             onClick={() => setActiveTab('files')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -83,16 +110,7 @@ export function Dashboard({ serial }: DashboardProps) {
             <Bell size={16} /> Notifications
           </button>
 
-          <button
-            onClick={() => setActiveTab('controls')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'controls'
-                ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
-            }`}
-          >
-            <SlidersHorizontal size={16} /> Remote Screen & Controls
-          </button>
+          
         </div>
       </div>
 
