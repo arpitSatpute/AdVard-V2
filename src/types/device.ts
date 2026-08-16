@@ -131,6 +131,7 @@ export interface AndroidApi {
   getDevices: () => Promise<AdbResponse<DeviceEntry[]>>;
   getDeviceInfo: (serial: string) => Promise<AdbResponse<DeviceInfo>>;
   restartAdb: () => Promise<AdbResponse>;
+  openCastWindow: (serial: string) => Promise<AdbResponse>;
 
   // Wireless ADB
   generateQrCode: () => Promise<AdbResponse<QrSessionData>>;

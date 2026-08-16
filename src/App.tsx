@@ -1,6 +1,7 @@
 import { Usb, Circle } from 'lucide-react';
 import { DeviceSelector } from './components/DeviceSelector';
 import { Dashboard, NothingSelected } from './pages/Dashboard';
+import { CastWindow } from './pages/CastWindow';
 import { ToastProvider } from './components/Toast';
 import { useDevices } from './hooks/useDevices';
 import { restartAdb } from './services/electronApi';
@@ -96,6 +97,16 @@ function AppContent() {
 }
 
 export default function App() {
+  const isCast = window.location.hash.includes('cast') || window.location.search.includes('serial=');
+
+  if (isCast) {
+    return (
+      <ToastProvider>
+        <CastWindow />
+      </ToastProvider>
+    );
+  }
+
   return (
     <ToastProvider>
       <AppContent />

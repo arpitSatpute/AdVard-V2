@@ -2,8 +2,9 @@ import { CastPhoneWindow } from '../components/CastPhoneWindow';
 import { Smartphone } from 'lucide-react';
 
 export function CastWindow() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const serial = searchParams.get('serial');
+  const urlStr = window.location.href;
+  const match = urlStr.match(/serial=([^&/#]+)/);
+  const serial = match ? decodeURIComponent(match[1]) : new URLSearchParams(window.location.search).get('serial');
 
 
   if (!serial) {

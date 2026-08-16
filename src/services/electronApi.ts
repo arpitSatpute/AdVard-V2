@@ -78,7 +78,7 @@ const httpApi = {
   pushFile: (serial: string, remotePath: string) => invokeHttp('adb:push-file', serial, remotePath),
   pushFolder: (serial: string, remotePath: string) => invokeHttp('adb:push-folder', serial, remotePath),
   pullFile: (serial: string, remotePath: string) => invokeHttp('adb:pull-file', serial, remotePath),
-
+  openCastWindow: (serial: string) => invokeHttp('adb:open-cast-window', serial),
 };
 
 function getApi() {

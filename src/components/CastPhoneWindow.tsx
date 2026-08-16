@@ -132,10 +132,11 @@ export function CastPhoneWindow({ serial, resolution = '1080x2400', isStandalone
           {!isStandalone && (
             <button
               onClick={handleOpenSeparateWindow}
-              className="p-1 rounded hover:bg-surface-600 text-gray-400 hover:text-gray-200"
-              title="Open Separate Phone Window"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-accent/15 border border-accent/30 text-accent-light hover:bg-accent/30 text-[11px] font-medium transition-all"
+              title="Open Separate Phone-Shaped Window Outside Application"
             >
-              <ExternalLink size={13} />
+              <ExternalLink size={12} />
+              <span>Pop-Out Phone</span>
             </button>
           )}
 

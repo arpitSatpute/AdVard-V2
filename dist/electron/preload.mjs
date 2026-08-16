@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('android', {
     getDevices: () => ipcRenderer.invoke('adb:get-devices'),
     getDeviceInfo: (serial) => ipcRenderer.invoke('adb:get-device-info', serial),
     restartAdb: () => ipcRenderer.invoke('adb:restart-adb'),
+    openCastWindow: (serial) => ipcRenderer.invoke('adb:open-cast-window', serial),
     // ─── Wireless ADB ────────────────────────────────────────────────────────
     generateQrCode: () => ipcRenderer.invoke('adb:generate-qr'),
     pairWirelessDevice: (payload) => ipcRenderer.invoke('adb:pair-wireless', payload),
