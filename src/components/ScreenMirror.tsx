@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RefreshCw, Smartphone, Touchpad } from 'lucide-react';
-import { takeScreenshot, tapScreen, swipeScreen } from '../services/electronApi';
+import { Play, Pause, RefreshCw, Smartphone, Touchpad, ExternalLink } from 'lucide-react';
+import { takeScreenshot, tapScreen, swipeScreen, openCastWindow } from '../services/electronApi';
 import { useToast } from './Toast';
 
 interface ScreenMirrorProps {
@@ -151,6 +151,23 @@ export function ScreenMirror({ serial, resolution }: ScreenMirrorProps) {
               <Smartphone size={13} />
             </button>
           </div>
+
+          <button
+            id="open-cast-window-btn"
+            onClick={async () => {
+              try {
+                await openCastWindow(serial);
+                showToast('Opened separate phone-shaped window!', 'success');
+              } catch {
+                showToast('Failed to open separate phone window', 'error');
+              }
+            }}
+            title="Open separate phone-shaped window outside application"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-600 border border-surface-500 text-gray-200 hover:bg-surface-500 hover:border-accent/40 hover:text-white transition-all active:scale-95"
+          >
+            <ExternalLink size={13} className="text-accent-light" />
+            <span>Pop-Out Phone Window</span>
+          </button>
 
           <button
             id="toggle-screen-mirror-btn"

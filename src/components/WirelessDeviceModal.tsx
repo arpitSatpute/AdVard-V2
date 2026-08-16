@@ -3,6 +3,7 @@ import { Wifi, KeyRound, Link2, Zap, QrCode, X, Loader2, Info, RefreshCw, AlertC
 import { pairWirelessDevice, connectWirelessDevice, enableUsbTcpip, generateQrCode } from '../services/electronApi';
 import type { DeviceEntry, QrSessionData } from '../types/device';
 import { useToast } from './Toast';
+import { formatDeviceSerial } from '../utils/deviceUtils';
 
 interface WirelessDeviceModalProps {
   isOpen: boolean;
@@ -262,7 +263,7 @@ export function WirelessDeviceModal({ isOpen, onClose, onSuccess, usbDevices = [
               >
                 {usbDevices.map((d) => (
                   <option key={d.serial} value={d.serial}>
-                    {d.serial} ({d.status})
+                    {formatDeviceSerial(d.serial, d.model)} ({d.status})
                   </option>
                 ))}
               </select>

@@ -1,5 +1,6 @@
-import { Battery, Monitor, Cpu, Layers, Ruler, RefreshCw } from 'lucide-react';
+import { Battery, BatteryCharging, Monitor, Cpu, Layers, Ruler, RefreshCw, Zap } from 'lucide-react';
 import type { DeviceInfo } from '../types/device';
+import { formatDeviceSerial } from '../utils/deviceUtils';
 
 interface DeviceInfoProps {
   info: DeviceInfo | null;
@@ -12,6 +13,9 @@ export function DeviceInfoPanel({ info, isLoading, error, onRefresh }: DeviceInf
   if (isLoading) return <DeviceInfoSkeleton />;
   if (error) return <DeviceInfoError error={error} onRefresh={onRefresh} />;
   if (!info) return null;
+
+  const isCharging = Boolean(info.isCharging);
+  const chargingText = info.chargingStatus || (isCharging ? 'Charging' : 'Discharging');
 
   const batteryColor =
     info.batteryLevel === null
@@ -34,9 +38,9 @@ export function DeviceInfoPanel({ info, isLoading, error, onRefresh }: DeviceInf
       value: `${info.androidVersion} (SDK ${info.sdkVersion})`,
     },
     {
-      icon: <Battery size={14} />,
-      label: 'Battery',
-      value: info.batteryLevel !== null ? `${info.batteryLevel}%` : 'Unknown',
+      icon: isCharging ? <BatteryCharging size={14} className="text-amber-400" /> : <Battery size={14} />,
+      label: 'Battery & Power',
+      value: info.batteryLevel !== null ? `${info.batteryLevel}% • ${chargingText}` : chargingText,
       valueClass: batteryColor,
     },
     {
@@ -55,10 +59,24 @@ export function DeviceInfoPanel({ info, isLoading, error, onRefresh }: DeviceInf
     <div className="bg-surface-700 rounded-2xl border border-surface-500 p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-semibold text-gray-100">
-            {info.manufacturer} {info.model}
-          </h2>
-          <p className="text-xs text-gray-500 font-mono mt-0.5">{info.serial}</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-gray-100">
+              {info.manufacturer} {info.model}
+            </h2>
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                isCharging
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  : 'bg-surface-600 text-gray-400 border-surface-500'
+              }`}
+            >
+              {isCharging ? <Zap size={10} className="fill-amber-400 text-amber-400" /> : <Battery size={10} />}
+              {chargingText}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 font-mono mt-0.5" title={info.serial}>
+            {formatDeviceSerial(info.serial, info.model)}
+          </p>
         </div>
         <button
           id="refresh-device-info-btn"
