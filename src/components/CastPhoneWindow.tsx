@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Smartphone, RefreshCw, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 import { takeScreenshot, tapScreen, swipeScreen, openCastWindow } from '../services/electronApi';
 import { useToast } from './Toast';
+import { formatDeviceSerial } from '../utils/deviceUtils';
 
 interface CastPhoneWindowProps {
   serial: string;
@@ -119,8 +120,8 @@ export function CastPhoneWindow({ serial, resolution = '1080x2400', isStandalone
       <div className="w-full max-w-[380px] flex items-center justify-between px-3 py-2 bg-surface-800 border border-surface-600 rounded-t-2xl text-xs">
         <div className="flex items-center gap-2">
           <Smartphone size={14} className="text-accent-light" />
-          <span className="font-semibold text-gray-300 truncate max-w-[140px]">
-            {serial}
+          <span className="font-semibold text-gray-300 truncate max-w-[140px]" title={serial}>
+            {formatDeviceSerial(serial)}
           </span>
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-success/20 text-success">
             {fps} FPS

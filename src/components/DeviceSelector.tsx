@@ -13,6 +13,7 @@ import type { DeviceEntry } from '../types/device';
 import { WirelessDeviceModal } from './WirelessDeviceModal';
 import { disconnectWirelessDevice } from '../services/electronApi';
 import { useToast } from './Toast';
+import { formatDeviceSerial } from '../utils/deviceUtils';
 
 interface DeviceSelectorProps {
   devices: DeviceEntry[];
@@ -147,8 +148,8 @@ export function DeviceSelector({
 
                     <div className="overflow-hidden flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-mono font-medium truncate">
-                          {device.serial}
+                        <span className="text-xs font-mono font-medium truncate" title={device.serial}>
+                          {formatDeviceSerial(device.serial, device.model)}
                         </span>
                       </div>
 

@@ -1,10 +1,10 @@
 import { runAdb } from './adbManager.mjs';
 import { detectConnectionType } from './connectionManager.mjs';
 /**
- * Runs `adb devices` and returns parsed list of connected USB & Wi-Fi devices.
+ * Runs `adb devices -l` and returns parsed list of connected USB & Wi-Fi devices.
  */
 export async function listDevices() {
-    const result = await runAdb(['devices']);
+    const result = await runAdb(['devices', '-l']);
     if (result.code !== 0) {
         throw new Error(`ADB devices failed: ${result.stderr}`);
     }
@@ -20,6 +20,16 @@ export async function listDevices() {
             const [serial, statusRaw] = parts;
             const status = normalizeStatus(statusRaw);
             const connType = detectConnectionType(serial);
+            // Parse model from `adb devices -l` output if present (e.g., model:ZD2229LTP3)
+            const modelMatch = trimmed.match(/\bmodel:(\S+)/);
+            let model = modelMatch ? modelMatch[1].replace(/_/g, ' ') : undefined;
+            // Extract model from serial string if formatted like `adb-MODEL-tls.connect.tcp`
+            if (!model) {
+                const adbMatch = serial.match(/^adb-(.+?)(?:-tls|\._tls|\.tls|$)/i);
+                if (adbMatch && adbMatch[1]) {
+                    model = adbMatch[1];
+                }
+            }
             let ip;
             let port;
             if (connType === 'wifi') {
@@ -31,6 +41,7 @@ export async function listDevices() {
                 serial,
                 status,
                 connectionType: connType,
+                model,
                 ip,
                 port,
             });
@@ -50,12 +61,12 @@ function normalizeStatus(raw) {
  * Retrieves detailed information about a specific device.
  */
 export async function getDeviceInfo(serial) {
-    const [model, manufacturer, androidVersion, sdkVersion, batteryOutput, resolutionOutput, densityOutput] = await Promise.all([
+    const [model, manufacturer, androidVersion, sdkVersion, batteryDetails, resolutionOutput, densityOutput] = await Promise.all([
         getProp(serial, 'ro.product.model'),
         getProp(serial, 'ro.product.manufacturer'),
         getProp(serial, 'ro.build.version.release'),
         getProp(serial, 'ro.build.version.sdk'),
-        getBatteryLevel(serial),
+        getBatteryDetails(serial),
         getResolution(serial),
         getDensity(serial),
     ]);
@@ -65,7 +76,10 @@ export async function getDeviceInfo(serial) {
         manufacturer: manufacturer || 'Unknown',
         androidVersion: androidVersion || 'Unknown',
         sdkVersion: sdkVersion || 'Unknown',
-        batteryLevel: batteryOutput,
+        batteryLevel: batteryDetails.level,
+        isCharging: batteryDetails.isCharging,
+        chargingStatus: batteryDetails.chargingStatus,
+        powerSource: batteryDetails.powerSource,
         resolution: resolutionOutput,
         density: densityOutput,
     };
@@ -74,15 +88,34 @@ async function getProp(serial, prop) {
     const result = await runAdb(['-s', serial, 'shell', 'getprop', prop]);
     return result.stdout.trim();
 }
-async function getBatteryLevel(serial) {
+async function getBatteryDetails(serial) {
     const result = await runAdb(['-s', serial, 'shell', 'dumpsys', 'battery']);
     if (result.code !== 0)
-        return null;
-    const match = result.stdout.match(/\blevel:\s*(\d+)/);
-    if (match) {
-        return parseInt(match[1], 10);
-    }
-    return null;
+        return { level: null, isCharging: null, chargingStatus: 'Unknown', powerSource: 'Unknown' };
+    const stdout = result.stdout;
+    const levelMatch = stdout.match(/\blevel:\s*(\d+)/);
+    const level = levelMatch ? parseInt(levelMatch[1], 10) : null;
+    // If any "... powered: true" line exists in dumpsys battery, device is powered/charging
+    const isPowered = /powered:\s*true/i.test(stdout);
+    const acPowered = /AC powered:\s*true/i.test(stdout);
+    const usbPowered = /USB powered:\s*true/i.test(stdout);
+    const wirelessPowered = /Wireless powered:\s*true/i.test(stdout);
+    const dockPowered = /Dock powered:\s*true/i.test(stdout);
+    let powerSource = 'Battery';
+    if (acPowered)
+        powerSource = 'AC';
+    else if (usbPowered)
+        powerSource = 'USB';
+    else if (wirelessPowered)
+        powerSource = 'Wireless';
+    else if (dockPowered)
+        powerSource = 'Dock';
+    const statusMatch = stdout.match(/\bstatus:\s*(\d+)/i);
+    const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : null;
+    // If any powered status is true or status is Charging (2) / Full (5), status is Charging
+    const isCharging = isPowered || statusCode === 2 || statusCode === 5;
+    const chargingStatus = isCharging ? 'Charging' : 'Discharging';
+    return { level, isCharging, chargingStatus, powerSource };
 }
 async function getResolution(serial) {
     const result = await runAdb(['-s', serial, 'shell', 'wm', 'size']);

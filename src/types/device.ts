@@ -7,6 +7,7 @@ export interface DeviceEntry {
   serial: string;
   status: DeviceStatus;
   connectionType: ConnectionType;
+  model?: string;
   ip?: string;
   port?: number;
 }
@@ -18,6 +19,9 @@ export interface DeviceInfo {
   androidVersion: string;
   sdkVersion: string;
   batteryLevel: number | null;
+  isCharging?: boolean | null;
+  chargingStatus?: string;
+  powerSource?: string;
   resolution: string;
   density: string;
 }

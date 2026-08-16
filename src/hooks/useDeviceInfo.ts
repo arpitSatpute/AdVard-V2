@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { DeviceInfo } from '../types/device';
 import { getDeviceInfo } from '../services/electronApi';
+
+const POLL_INTERVAL_MS = 3000;
 
 interface UseDeviceInfoResult {
   info: DeviceInfo | null;
@@ -15,43 +17,56 @@ export function useDeviceInfo(serial: string | null): UseDeviceInfoResult {
   const [error, setError] = useState<string | null>(null);
   const isMounted = useRef(true);
 
-  const fetch = async (s: string) => {
-    setIsLoading(true);
-    setError(null);
+  const fetchInfo = useCallback(async (s: string, showLoading = false) => {
+    if (showLoading) setIsLoading(true);
+
     try {
       const response = await getDeviceInfo(s);
       if (!isMounted.current) return;
+
       if (response.success && response.data) {
         setInfo(response.data);
-      } else {
+        setError(null);
+      } else if (showLoading) {
         setInfo(null);
         setError(response.error ?? 'Failed to fetch device info');
       }
     } catch (err: unknown) {
       if (!isMounted.current) return;
-      setInfo(null);
-      setError(err instanceof Error ? err.message : String(err));
+      if (showLoading) {
+        setInfo(null);
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      if (isMounted.current) setIsLoading(false);
+      if (isMounted.current && showLoading) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
     if (serial) {
-      fetch(serial);
+      fetchInfo(serial, true);
+
+      const interval = setInterval(() => {
+        fetchInfo(serial, false);
+      }, POLL_INTERVAL_MS);
+
+      return () => {
+        isMounted.current = false;
+        clearInterval(interval);
+      };
     } else {
       setInfo(null);
       setError(null);
+      return () => {
+        isMounted.current = false;
+      };
     }
-    return () => {
-      isMounted.current = false;
-    };
-  }, [serial]);
+  }, [serial, fetchInfo]);
 
-  const refetch = () => {
-    if (serial) fetch(serial);
-  };
+  const refetch = useCallback(() => {
+    if (serial) fetchInfo(serial, true);
+  }, [serial, fetchInfo]);
 
   return { info, isLoading, error, refetch };
 }
