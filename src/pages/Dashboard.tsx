@@ -68,49 +68,45 @@ export function Dashboard({ serial }: DashboardProps) {
         <div className="flex items-center gap-2 bg-surface-800 p-1.5 rounded-2xl border border-surface-600">
           <button
             onClick={() => setActiveTab('controls')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'controls'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'controls'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
-            }`}
+              }`}
           >
             <SlidersHorizontal size={16} /> Remote Screen & Controls
           </button>
 
           <button
             onClick={() => setActiveTab('files')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'files'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'files'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
-            }`}
+              }`}
           >
             <FolderSync size={16} /> File Sharing & Explorer
           </button>
 
           <button
             onClick={() => setActiveTab('calls')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'calls'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'calls'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
-            }`}
+              }`}
           >
             <PhoneCall size={16} /> Calls & Contacts
           </button>
 
           <button
             onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'notifications'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'notifications'
                 ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-105'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-surface-700/50'
-            }`}
+              }`}
           >
             <Bell size={16} /> Notifications
           </button>
 
-          
+
         </div>
       </div>
 

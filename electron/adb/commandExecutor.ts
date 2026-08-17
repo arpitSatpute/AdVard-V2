@@ -262,7 +262,7 @@ export async function getContacts(serial: string): Promise<ContactItem[]> {
           }
         }
       }
-    } catch {}
+    } catch { }
   }
 
   return contacts;
