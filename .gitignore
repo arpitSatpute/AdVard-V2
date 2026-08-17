@@ -13,6 +13,7 @@ dist/mac-arm64/
 dist/win-unpacked/
 dist/builder-*
 dist-ssr/
+dist/
 release/
 out/
 *.local

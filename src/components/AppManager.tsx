@@ -172,33 +172,30 @@ export function AppManager({ serial }: AppManagerProps) {
       <div className="flex border-b border-surface-600 bg-surface-800/50 px-4 pt-2 gap-2">
         <button
           onClick={() => setActiveTab('3rdparty')}
-          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${
-            activeTab === '3rdparty'
+          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${activeTab === '3rdparty'
               ? 'border-accent text-accent-light'
               : 'border-transparent text-gray-400 hover:text-gray-200'
-          }`}
+            }`}
         >
           <UserCheck size={12} />
           User Installed
         </button>
         <button
           onClick={() => setActiveTab('system')}
-          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${
-            activeTab === 'system'
+          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${activeTab === 'system'
               ? 'border-accent text-accent-light'
               : 'border-transparent text-gray-400 hover:text-gray-200'
-          }`}
+            }`}
         >
           <Cpu size={12} />
           System Apps
         </button>
         <button
           onClick={() => setActiveTab('all')}
-          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${
-            activeTab === 'all'
+          className={`flex items-center gap-1.5 pb-2 text-xs font-medium border-b-2 transition-all px-1 ${activeTab === 'all'
               ? 'border-accent text-accent-light'
               : 'border-transparent text-gray-400 hover:text-gray-200'
-          }`}
+            }`}
         >
           <Package size={12} />
           All Apps
