@@ -9,10 +9,6 @@ lerna-debug.log*
 
 # Node modules & build outputs
 node_modules/
-dist/mac-arm64/
-dist/win-unpacked/
-dist/builder-*
-dist-ssr/
 dist/
 release/
 out/
