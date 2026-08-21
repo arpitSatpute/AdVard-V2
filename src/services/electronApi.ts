@@ -409,6 +409,32 @@ export async function showHostNotification(title: string, body: string, appName?
   return execApiCall('showHostNotification', title, body, appName);
 }
 
+// ─── Fastboot Mode API ────────────────────────────────────────────────────────
+
+export async function fastbootListDevices(): Promise<AdbResponse<{ serial: string; mode: 'bootloader' | 'fastbootd' | 'unknown' }[]>> {
+  return execApiCall('fastbootListDevices');
+}
+
+export async function fastbootGetVariables(serial: string): Promise<AdbResponse<any>> {
+  return execApiCall('fastbootGetVariables', serial);
+}
+
+export async function fastbootReboot(serial: string): Promise<AdbResponse> {
+  return execApiCall('fastbootReboot', serial);
+}
+
+export async function fastbootRebootRecovery(serial: string): Promise<AdbResponse> {
+  return execApiCall('fastbootRebootRecovery', serial);
+}
+
+export async function fastbootRebootFastbootd(serial: string): Promise<AdbResponse> {
+  return execApiCall('fastbootRebootFastbootd', serial);
+}
+
+export async function fastbootPowerOff(serial: string): Promise<AdbResponse> {
+  return execApiCall('fastbootPowerOff', serial);
+}
+
 
 
 

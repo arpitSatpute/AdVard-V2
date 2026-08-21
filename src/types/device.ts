@@ -1,7 +1,7 @@
 // ─── Device Types ─────────────────────────────────────────────────────────────
 
-export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'unknown';
-export type ConnectionType = 'usb' | 'wifi';
+export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'fastboot' | 'unknown';
+export type ConnectionType = 'usb' | 'wifi' | 'fastboot';
 
 export interface DeviceEntry {
   serial: string;
@@ -10,6 +10,29 @@ export interface DeviceEntry {
   model?: string;
   ip?: string;
   port?: number;
+  mode?: 'bootloader' | 'fastbootd' | 'unknown';
+}
+
+export interface FastbootDevice {
+  serial: string;
+  mode: 'bootloader' | 'fastbootd' | 'unknown';
+  variables?: FastbootVariables;
+  connected: boolean;
+}
+
+export interface FastbootVariables {
+  raw: Record<string, string>;
+  product?: string;
+  variant?: string;
+  bootloaderVersion?: string;
+  fastbootVersion?: string;
+  secureBoot?: string;
+  unlocked?: string;
+  currentSlot?: string;
+  slotCount?: string;
+  batteryVoltage?: string;
+  batterySoc?: string;
+  isUserspace?: string;
 }
 
 export interface DeviceInfo {
@@ -210,6 +233,14 @@ export interface AndroidApi {
   // Notifications
   getNotifications: (serial: string) => Promise<AdbResponse<NotificationItem[]>>;
   showHostNotification: (title: string, body: string, appName?: string) => Promise<AdbResponse>;
+
+  // Fastboot
+  fastbootListDevices: () => Promise<AdbResponse<{ serial: string; mode: 'bootloader' | 'fastbootd' | 'unknown' }[]>>;
+  fastbootGetVariables: (serial: string) => Promise<AdbResponse<FastbootVariables>>;
+  fastbootReboot: (serial: string) => Promise<AdbResponse>;
+  fastbootRebootRecovery: (serial: string) => Promise<AdbResponse>;
+  fastbootRebootFastbootd: (serial: string) => Promise<AdbResponse>;
+  fastbootPowerOff: (serial: string) => Promise<AdbResponse>;
 }
 
 declare global {

@@ -218,6 +218,25 @@ contextBridge.exposeInMainWorld('android', {
 
   showHostNotification: (title: string, body: string, appName?: string) =>
     ipcRenderer.invoke('adb:show-host-notification', { title, body, appName }),
+
+  // ─── Fastboot Mode ────────────────────────────────────────────────────────
+  fastbootListDevices: () =>
+    ipcRenderer.invoke('fastboot:list-devices'),
+
+  fastbootGetVariables: (serial: string) =>
+    ipcRenderer.invoke('fastboot:get-variables', serial),
+
+  fastbootReboot: (serial: string) =>
+    ipcRenderer.invoke('fastboot:reboot', serial),
+
+  fastbootRebootRecovery: (serial: string) =>
+    ipcRenderer.invoke('fastboot:reboot-recovery', serial),
+
+  fastbootRebootFastbootd: (serial: string) =>
+    ipcRenderer.invoke('fastboot:reboot-fastbootd', serial),
+
+  fastbootPowerOff: (serial: string) =>
+    ipcRenderer.invoke('fastboot:power-off', serial),
 });
 
 

@@ -8,6 +8,7 @@ import {
   Wifi,
   Plus,
   Unlink,
+  Cpu,
 } from 'lucide-react';
 import type { DeviceEntry } from '../types/device';
 import { WirelessDeviceModal } from './WirelessDeviceModal';
@@ -124,6 +125,7 @@ export function DeviceSelector({
             devices.map((device) => {
               const isSelected = device.serial === selectedSerial;
               const isWifi = device.connectionType === 'wifi';
+              const isFastboot = device.connectionType === 'fastboot' || device.status === 'fastboot';
 
               return (
                 <div
@@ -140,10 +142,14 @@ export function DeviceSelector({
                     {/* Connection Type Icon */}
                     <div
                       className={`p-1.5 rounded-lg shrink-0 ${
-                        isWifi ? 'bg-indigo-500/15 text-indigo-400' : 'bg-surface-500 text-gray-400'
+                        isFastboot
+                          ? 'bg-amber-500/15 text-amber-400'
+                          : isWifi
+                          ? 'bg-indigo-500/15 text-indigo-400'
+                          : 'bg-surface-500 text-gray-400'
                       }`}
                     >
-                      {isWifi ? <Wifi size={13} /> : <Usb size={13} />}
+                      {isFastboot ? <Cpu size={13} /> : isWifi ? <Wifi size={13} /> : <Usb size={13} />}
                     </div>
 
                     <div className="overflow-hidden flex-1">
@@ -155,19 +161,21 @@ export function DeviceSelector({
 
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-gray-400 uppercase font-semibold">
-                          {device.connectionType}
+                          {isFastboot ? 'Fastboot' : device.connectionType}
                         </span>
                         <span className="text-[10px] text-gray-500">•</span>
                         <span
                           className={`text-[10px] capitalize font-medium ${
-                            device.status === 'device'
+                            isFastboot
+                              ? 'text-amber-400 font-semibold'
+                              : device.status === 'device'
                               ? 'text-success'
                               : device.status === 'unauthorized'
                               ? 'text-warning'
                               : 'text-danger'
                           }`}
                         >
-                          {device.status}
+                          {isFastboot ? `Fastboot (${device.mode || 'bootloader'})` : device.status}
                         </span>
                       </div>
                     </div>

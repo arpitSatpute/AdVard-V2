@@ -1,6 +1,7 @@
 import { Usb, Circle } from 'lucide-react';
 import { DeviceSelector } from './components/DeviceSelector';
 import { Dashboard, NothingSelected } from './pages/Dashboard';
+import { FastbootDashboard } from './components/FastbootDashboard';
 import { CastWindow } from './pages/CastWindow';
 import { ToastProvider } from './components/Toast';
 import { useDevices } from './hooks/useDevices';
@@ -20,7 +21,9 @@ function AppContent() {
 
   const { showToast } = useToast();
 
-  const connectedCount = devices.filter((d) => d.status === 'device').length;
+  const selectedDevice = devices.find((d) => d.serial === selectedSerial);
+  const connectedCount = devices.filter((d) => d.status === 'device' || d.status === 'fastboot').length;
+  const fastbootCount = devices.filter((d) => d.status === 'fastboot' || d.connectionType === 'fastboot').length;
 
   const handleRestartAdb = async () => {
     try {
@@ -61,12 +64,12 @@ function AppContent() {
         >
           <Circle
             size={7}
-            className={connectedCount > 0 ? 'fill-success text-success' : 'fill-gray-600 text-gray-600'}
+            className={connectedCount > 0 ? (fastbootCount > 0 ? 'fill-amber-400 text-amber-400' : 'fill-success text-success') : 'fill-gray-600 text-gray-600'}
           />
-          <span className={connectedCount > 0 ? 'text-success' : 'text-gray-500'}>
+          <span className={connectedCount > 0 ? (fastbootCount > 0 ? 'text-amber-400 font-medium' : 'text-success') : 'text-gray-500'}>
             {connectedCount > 0
-              ? `${connectedCount} device${connectedCount > 1 ? 's' : ''} connected`
-              : 'No USB devices'}
+              ? `${connectedCount} device${connectedCount > 1 ? 's' : ''} connected${fastbootCount > 0 ? ` (${fastbootCount} Fastboot)` : ''}`
+              : 'No devices connected'}
           </span>
         </div>
       </header>
@@ -86,7 +89,11 @@ function AppContent() {
 
         <main className="flex-1 flex overflow-hidden">
           {selectedSerial ? (
-            <Dashboard serial={selectedSerial} />
+            selectedDevice?.connectionType === 'fastboot' || selectedDevice?.status === 'fastboot' ? (
+              <FastbootDashboard serial={selectedSerial} initialMode={selectedDevice?.mode} />
+            ) : (
+              <Dashboard serial={selectedSerial} />
+            )
           ) : (
             <NothingSelected />
           )}

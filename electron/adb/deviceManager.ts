@@ -1,15 +1,18 @@
 import { runAdb } from './adbManager';
 import { detectConnectionType, ConnectionType } from './connectionManager';
+import { listFastbootDevices } from '../fastboot/fastbootManager';
 
-export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'unknown';
+export type DeviceStatus = 'device' | 'unauthorized' | 'offline' | 'fastboot' | 'unknown';
+export type ExtendedConnectionType = ConnectionType | 'fastboot';
 
 export interface DeviceEntry {
   serial: string;
   status: DeviceStatus;
-  connectionType: ConnectionType;
+  connectionType: ExtendedConnectionType;
   model?: string;
   ip?: string;
   port?: number;
+  mode?: 'bootloader' | 'fastbootd' | 'unknown';
 }
 
 export interface DeviceInfo {
@@ -27,59 +30,81 @@ export interface DeviceInfo {
 }
 
 /**
- * Runs `adb devices -l` and returns parsed list of connected USB & Wi-Fi devices.
+ * Runs `adb devices -l` and `fastboot devices` and returns parsed list of connected devices.
  */
 export async function listDevices(): Promise<DeviceEntry[]> {
-  const result = await runAdb(['devices', '-l']);
-
-  if (result.code !== 0) {
-    throw new Error(`ADB devices failed: ${result.stderr}`);
-  }
-
-  const lines = result.stdout.split('\n');
   const devices: DeviceEntry[] = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Skip header and empty lines
-    if (!trimmed || trimmed === 'List of devices attached') continue;
+  // 1. Fetch ADB devices
+  try {
+    const result = await runAdb(['devices', '-l']);
 
-    const parts = trimmed.split(/\s+/);
-    if (parts.length >= 2) {
-      const [serial, statusRaw] = parts;
-      const status = normalizeStatus(statusRaw);
-      const connType = detectConnectionType(serial);
+    if (result.code === 0 && result.stdout) {
+      const lines = result.stdout.split('\n');
 
-      // Parse model from `adb devices -l` output if present (e.g., model:ZD2229LTP3)
-      const modelMatch = trimmed.match(/\bmodel:(\S+)/);
-      let model = modelMatch ? modelMatch[1].replace(/_/g, ' ') : undefined;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Skip header and empty lines
+        if (!trimmed || trimmed === 'List of devices attached') continue;
 
-      // Extract model from serial string if formatted like `adb-MODEL-tls.connect.tcp`
-      if (!model) {
-        const adbMatch = serial.match(/^adb-(.+?)(?:-tls|\._tls|\.tls|$)/i);
-        if (adbMatch && adbMatch[1]) {
-          model = adbMatch[1];
+        const parts = trimmed.split(/\s+/);
+        if (parts.length >= 2) {
+          const [serial, statusRaw] = parts;
+          const status = normalizeStatus(statusRaw);
+          const connType = detectConnectionType(serial);
+
+          // Parse model from `adb devices -l` output if present (e.g., model:ZD2229LTP3)
+          const modelMatch = trimmed.match(/\bmodel:(\S+)/);
+          let model = modelMatch ? modelMatch[1].replace(/_/g, ' ') : undefined;
+
+          // Extract model from serial string if formatted like `adb-MODEL-tls.connect.tcp`
+          if (!model) {
+            const adbMatch = serial.match(/^adb-(.+?)(?:-tls|\._tls|\.tls|$)/i);
+            if (adbMatch && adbMatch[1]) {
+              model = adbMatch[1];
+            }
+          }
+
+          let ip: string | undefined;
+          let port: number | undefined;
+
+          if (connType === 'wifi') {
+            const [h, p] = serial.split(':');
+            ip = h;
+            port = parseInt(p, 10);
+          }
+
+          devices.push({
+            serial,
+            status,
+            connectionType: connType,
+            model,
+            ip,
+            port,
+          });
         }
       }
-
-      let ip: string | undefined;
-      let port: number | undefined;
-
-      if (connType === 'wifi') {
-        const [h, p] = serial.split(':');
-        ip = h;
-        port = parseInt(p, 10);
-      }
-
-      devices.push({
-        serial,
-        status,
-        connectionType: connType,
-        model,
-        ip,
-        port,
-      });
     }
+  } catch {
+    // ADB list failed; proceed to fastboot list
+  }
+
+  // 2. Fetch Fastboot devices
+  try {
+    const fastbootDevs = await listFastbootDevices();
+    for (const fbDev of fastbootDevs) {
+      // Avoid duplicate entries if serial is already in list
+      if (!devices.some((d) => d.serial === fbDev.serial)) {
+        devices.push({
+          serial: fbDev.serial,
+          status: 'fastboot',
+          connectionType: 'fastboot',
+          mode: fbDev.mode,
+        });
+      }
+    }
+  } catch {
+    // Fastboot detection failed or binary missing; ignore gracefully
   }
 
   return devices;
